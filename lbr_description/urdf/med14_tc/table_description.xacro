@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<robot name="table" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- <xacro:include filename="$(find lbr_description)/urdf/med14_tc/common_properties.xacro" /> -->
+
+    <xacro:macro name="table_description" params="parent_link robot_name">
+    
+        <xacro:property name="base_length" value="0.92" />
+        <xacro:property name="base_width" value="0.61" />
+        <xacro:property name="base_height" value="0.4" />
+
+        <link name="${robot_name}_table_link">
+            <visual>
+                <geometry>
+                    <box size="${base_length} ${base_width} ${base_height}" />
+                </geometry>
+                <origin xyz="0 0 ${-base_height/2}" rpy="0 0 0" />
+                <material name="blue" />
+            </visual>
+            <xacro:box_inertia m="3.0" l="${base_length}" w="${base_width}" h="${base_height}"
+                                xyz="0 0 ${-base_height/2}" rpy="0 0 0" />
+            
+            <collision>
+                <geometry>
+                    <box size="${base_length} ${base_width} ${base_height}" />
+                </geometry>
+                <origin xyz="0 0 ${-base_height/2}" rpy="0 0 0" />
+            </collision>
+        </link>
+
+        <joint name="${robot_name}_robot_table_joint" type="fixed">
+            <parent link="${parent_link}" />
+            <child link="${robot_name}_table_link" />
+            <origin xyz="0 0 0" rpy="0 0 0" />
+        </joint>
+
+    </xacro:macro>
+
+
+</robot>

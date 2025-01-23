@@ -5,16 +5,18 @@
 
     <!-- include the lbr med macro -->
     <xacro:include filename="$(find lbr_description)/urdf/med14/med14_description.xacro" />
-    <xacro:include filename="$(find lbr_description)/urdf/med14_tc/tendon_cube_description.xacro" />
-    <xacro:include filename="$(find lbr_description)/urdf/med14_tc/common_properties.xacro" />
-    <xacro:include filename="$(find lbr_description)/urdf/med14_tc/table_description.xacro" />
+    <xacro:include filename="$(find robotiq_description)/urdf/robotiq_2f_140_macro.urdf.xacro" />
+    <xacro:include filename="$(find lbr_description)/urdf/med14_robotiq_2f/robotiq_adapter_description.xacro" />
+    <xacro:include filename="$(find lbr_description)/urdf/med14_robotiq_2f/common_properties.xacro" />
+    <xacro:include filename="$(find lbr_description)/urdf/med14_robotiq_2f/table_description.xacro" />
+
 
     <xacro:arg name="robot_name" default="lbr" />
     <xacro:arg name="mode" default="true" />
     <xacro:arg
         name="system_config_path"
         default="$(find lbr_description)/ros2_control/lbr_system_config.yaml" />
-    <!-- <xacro:arg name="tc_parent" value="$(arg robot_name)_link_ee" /> -->
+    <xacro:arg name="use_fake_hardware" default="true" />
 
     <!-- KDL requires a link without inertia -->
     <link name="$(arg robot_name)_floating_link" />
@@ -25,21 +27,29 @@
         <child link="$(arg robot_name)_link_0" />
     </joint>
 
-    <!-- instantiate robot -->
+    <!-- Instantiate robot -->
     <xacro:med14
         robot_name="$(arg robot_name)"
         mode="$(arg mode)"
         system_config_path="$(arg system_config_path)" />
 
-    <!-- attach tendon cube -->
-    <xacro:tendon_cube_description 
+    <!-- Attach adapter -->
+    <xacro:robotiq_adapter_description 
         parent_link="$(arg robot_name)_link_ee"
         robot_name="$(arg robot_name)" />
+
+    <!-- Attach Robotiq gripper -->
+    <xacro:robotiq_gripper 
+        name="RobotiqGripperHardwareInterface"
+        prefix="$(arg robot_name)_"
+        parent="$(arg robot_name)_robotiq_adapter_link"
+        use_fake_hardware="$(arg use_fake_hardware)">
+        <origin xyz="0 0 ${0.05}" rpy="0 0 ${pi/2}" />
+    </xacro:robotiq_gripper>
 
     <!-- attach table to robot base -->
     <xacro:table_description 
         parent_link="$(arg robot_name)_link_0"
         robot_name="$(arg robot_name)" />
-    
 
 </robot>

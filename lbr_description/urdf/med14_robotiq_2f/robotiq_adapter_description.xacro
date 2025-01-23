@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<robot name="my_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- <xacro:include filename="$(find lbr_description)/urdf/med14_tc/common_properties.xacro" /> -->
+
+    <xacro:macro name="robotiq_adapter_description" params="parent_link robot_name">
+    
+        <xacro:property name="cylinder_radius" value="0.045" />
+        <xacro:property name="cylinder_height" value="0.05" />
+
+        <link name="${robot_name}_robotiq_adapter_link">
+            <visual>
+                <geometry>
+                    <cylinder radius="${cylinder_radius}" length="${cylinder_height}"/>
+                </geometry>
+                <origin xyz="0 0 ${cylinder_height/2}" rpy="0 0 0" />
+                <material name="grey" />
+            </visual>
+            <collision>
+                <geometry>
+                    <cylinder radius="${cylinder_radius}" length="${cylinder_height}"/>
+                </geometry>
+                <origin xyz="0 0 ${cylinder_height/2}" rpy="0 0 0" />
+            </collision>
+        </link>
+
+        <joint name="${robot_name}_robotiq_adapter_joint" type="fixed">
+            <parent link="${parent_link}" />
+            <child link="${robot_name}_robotiq_adapter_link" />
+            <origin xyz="0 0 0" rpy="0 0 0" />
+        </joint>
+
+    </xacro:macro>
+
+
+</robot>
