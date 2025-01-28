@@ -21,6 +21,7 @@ class NodeState(Enum):
     PLANNING = 1
     EXECUTING = 2
 
+
 class MoveToPoseNode(Node):
 
     ################# INITIALIZE NODE #################
@@ -889,8 +890,7 @@ class MoveToPoseNode(Node):
     #         self.get_logger().error(f"Aborting goal\n{e}")
     #         ### ABORT THE GOAL
 
- 
-        
+
 def main(args=None):
     rclpy.init(args=args)
     node = MoveToPoseNode()
@@ -898,7 +898,6 @@ def main(args=None):
     executor.add_node(node)
     executor.spin()
     rclpy.shutdown()
-
 
 
 if __name__ == '__main__':
