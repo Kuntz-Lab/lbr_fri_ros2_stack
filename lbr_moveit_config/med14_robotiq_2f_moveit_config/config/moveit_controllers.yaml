@@ -22,5 +22,7 @@ moveit_simple_controller_manager:
 
   robotiq_gripper_controller:
     type: GripperCommand
-    joint: lbr_finger_joint
+    joints: 
+      - lbr_finger_joint
     action_ns: gripper_cmd
+    default: true

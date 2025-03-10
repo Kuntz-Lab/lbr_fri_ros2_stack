@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <!-- top level -->
-<robot name="med14" xmlns:xacro="http://www.ros.org/wiki/xacro">
+<robot name="med14_robotiq_2f" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
     <!-- include the lbr med macro -->
     <xacro:include filename="$(find lbr_description)/urdf/med14/med14_description.xacro" />
@@ -44,8 +44,16 @@
         prefix="$(arg robot_name)_"
         parent="$(arg robot_name)_robotiq_adapter_link"
         use_fake_hardware="$(arg use_fake_hardware)">
-        <origin xyz="0 0 ${0.05}" rpy="0 0 ${pi/2}" />
+        <origin xyz="0 0 0" rpy="0 0 ${pi/2}" />
     </xacro:robotiq_gripper>
+
+    <!-- Attach Robotiq gripper NO PREFIX-->
+    <!-- <xacro:robotiq_gripper 
+        name="RobotiqGripperHardwareInterface"
+        parent="$(arg robot_name)_robotiq_adapter_link"
+        use_fake_hardware="$(arg use_fake_hardware)">
+        <origin xyz="0 0 0" rpy="0 0 ${pi/2}" />
+    </xacro:robotiq_gripper> -->
 
     <!-- attach table to robot base -->
     <xacro:table_description 

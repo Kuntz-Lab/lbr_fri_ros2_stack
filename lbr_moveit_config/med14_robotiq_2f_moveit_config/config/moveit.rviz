@@ -5,6 +5,8 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /MotionPlanning1
+        - /TF1
+        - /TF1/Frames1
       Splitter Ratio: 0.5
     Tree Height: 396
   - Class: rviz_common/Help
@@ -70,6 +72,31 @@ Visualization Manager:
             Alpha: 1
             Show Axes: false
             Show Trail: false
+          lbr_left_inner_finger:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_left_inner_finger_pad:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_left_inner_knuckle:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_left_outer_finger:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_left_outer_knuckle:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
           lbr_link_0:
             Alpha: 1
             Show Axes: false
@@ -114,6 +141,50 @@ Visualization Manager:
             Alpha: 1
             Show Axes: false
             Show Trail: false
+          lbr_right_inner_finger:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_right_inner_finger_pad:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_right_inner_knuckle:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_right_outer_finger:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_right_outer_knuckle:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_robotiq_140_base_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_robotiq_adapter_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_robotiq_base_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          lbr_table_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
         Loop Animation: true
         Robot Alpha: 0.5
         Robot Color: 150; 50; 150
@@ -164,6 +235,31 @@ Visualization Manager:
             Alpha: 1
             Show Axes: false
             Show Trail: false
+          lbr_left_inner_finger:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_left_inner_finger_pad:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_left_inner_knuckle:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_left_outer_finger:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_left_outer_knuckle:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
           lbr_link_0:
             Alpha: 1
             Show Axes: false
@@ -208,11 +304,148 @@ Visualization Manager:
             Alpha: 1
             Show Axes: false
             Show Trail: false
+          lbr_right_inner_finger:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_right_inner_finger_pad:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_right_inner_knuckle:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_right_outer_finger:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_right_outer_knuckle:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_robotiq_140_base_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_robotiq_adapter_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          lbr_robotiq_base_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          lbr_table_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
         Robot Alpha: 1
         Show Robot Collision: false
         Show Robot Visual: true
       Value: true
       Velocity_Scaling_Factor: 0.1
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Frame Timeout: 15
+      Frames:
+        All Enabled: false
+        lbr_floating_link:
+          Value: false
+        lbr_left_inner_finger:
+          Value: false
+        lbr_left_inner_finger_pad:
+          Value: false
+        lbr_left_inner_knuckle:
+          Value: false
+        lbr_left_outer_finger:
+          Value: false
+        lbr_left_outer_knuckle:
+          Value: false
+        lbr_link_0:
+          Value: false
+        lbr_link_1:
+          Value: false
+        lbr_link_2:
+          Value: false
+        lbr_link_3:
+          Value: false
+        lbr_link_4:
+          Value: false
+        lbr_link_5:
+          Value: false
+        lbr_link_6:
+          Value: false
+        lbr_link_7:
+          Value: false
+        lbr_link_ee:
+          Value: false
+        lbr_right_inner_finger:
+          Value: false
+        lbr_right_inner_finger_pad:
+          Value: false
+        lbr_right_inner_knuckle:
+          Value: false
+        lbr_right_outer_finger:
+          Value: false
+        lbr_right_outer_knuckle:
+          Value: false
+        lbr_robotiq_140_base_link:
+          Value: false
+        lbr_robotiq_adapter_link:
+          Value: false
+        lbr_robotiq_base_link:
+          Value: false
+        lbr_table_link:
+          Value: false
+        world:
+          Value: false
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+      Tree:
+        world:
+          lbr_floating_link:
+            lbr_link_0:
+              lbr_link_1:
+                lbr_link_2:
+                  lbr_link_3:
+                    lbr_link_4:
+                      lbr_link_5:
+                        lbr_link_6:
+                          lbr_link_7:
+                            lbr_link_ee:
+                              lbr_robotiq_adapter_link:
+                                lbr_robotiq_base_link:
+                                  lbr_robotiq_140_base_link:
+                                    lbr_left_inner_knuckle:
+                                      {}
+                                    lbr_left_outer_knuckle:
+                                      lbr_left_outer_finger:
+                                        lbr_left_inner_finger:
+                                          lbr_left_inner_finger_pad:
+                                            {}
+                                    lbr_right_inner_knuckle:
+                                      {}
+                                    lbr_right_outer_knuckle:
+                                      lbr_right_outer_finger:
+                                        lbr_right_inner_finger:
+                                          lbr_right_inner_finger_pad:
+                                            {}
+              lbr_table_link:
+                {}
+      Update Interval: 0
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 21; 21; 26
@@ -246,10 +479,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5
+      Pitch: 0.6699998378753662
       Target Frame: world
       Value: Orbit (rviz_default_plugins)
-      Yaw: 5.699999809265137
+      Yaw: 5.945000648498535
     Saved: ~
 Window Geometry:
   Displays:
@@ -268,4 +501,4 @@ Window Geometry:
     collapsed: false
   Width: 1920
   X: 1080
-  Y: 435
+  Y: 360

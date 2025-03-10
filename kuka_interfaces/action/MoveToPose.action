@@ -1,0 +1,11 @@
+# Goal: desired pose
+geometry_msgs/PoseStamped desired_pose
+---
+# Result: pose reached
+geometry_msgs/PoseStamped reached_pose
+bool success
+string message
+---
+# Feedback: current pose
+geometry_msgs/PoseStamped current_pose
+

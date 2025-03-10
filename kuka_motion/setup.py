@@ -22,7 +22,9 @@ setup(
         'console_scripts': [
             'move_to_pose = kuka_motion.move_to_pose:main',
             'pose_publisher = kuka_motion.pose_pub:main',
-            'tf_tree_sub = kuka_motion.tf_tree_sub:main'
+            'tf_tree_sub = kuka_motion.tf_tree_sub:main',
+            'move_to_pose_server = kuka_motion.move_to_pose_server:main',
+            'move_to_pose_client = kuka_motion.move_to_pose_client:main'
         ],
     },
 )
