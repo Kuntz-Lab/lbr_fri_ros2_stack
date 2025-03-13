@@ -17,14 +17,23 @@ class MoveToPoseClientNode(Node): # MODIFY NAME
             "move_to_pose")
     
 
-    def send_goal(self, position: Vector3, rpy: Vector3):
+    def send_goal(self, 
+                  position: Vector3, 
+                  rpy: Vector3, 
+                  planning_group: str = "arm",
+                  vel_scaling: float = 0.1,
+                  acc_scaling: float = 0.1):
         # wait for server to be up
         self.move_to_goal_client_.wait_for_server()
 
         # create goal
         goal = MoveToPose.Goal()
+
+        # add header
         goal.desired_pose.header.frame_id = "world"
         goal.desired_pose.header.stamp = self.get_clock().now().to_msg()
+
+        # add pose
         goal.desired_pose.pose.position.x = position.x
         goal.desired_pose.pose.position.y = position.y
         goal.desired_pose.pose.position.z = position.z
@@ -33,6 +42,11 @@ class MoveToPoseClientNode(Node): # MODIFY NAME
         goal.desired_pose.pose.orientation.y = orientation[1]
         goal.desired_pose.pose.orientation.z = orientation[2]
         goal.desired_pose.pose.orientation.w = orientation[3]
+
+        # add planning group
+        goal.planning_group = planning_group
+        goal.vel_scaling = vel_scaling
+        goal.acc_scaling = acc_scaling
 
         # send the goal
         self.get_logger().info("Sending the goal to the MoveToPose server")
@@ -88,8 +102,8 @@ def main(args=None):
     
     # Example end-effector pose
     goal_pos = Vector3()
-    goal_pos.x = -0.3
-    goal_pos.y = -0.4
+    goal_pos.x = 0.3
+    goal_pos.y = 0.4
     goal_pos.z = 1.0
 
     goal_rpy = Vector3()
@@ -97,7 +111,7 @@ def main(args=None):
     goal_rpy.y = -0.57
     goal_rpy.z = 0.0
 
-    node.send_goal(goal_pos, goal_rpy)
+    node.send_goal(goal_pos, goal_rpy, "arm", 0.5, 0.5)
     rclpy.spin(node)
     rclpy.shutdown()
     

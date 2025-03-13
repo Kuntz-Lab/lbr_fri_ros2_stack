@@ -1,555 +1,173 @@
+#!/usr/bin/env python3
+# filepath: /home/joe/medbot_ws/src/medbot_ros2_stack/wrapper_action_server.py
+
 import rclpy
+import threading
 from rclpy.node import Node
-from rclpy.action import ActionClient
-from rclpy.action.client import ClientGoalHandle, GoalStatus
-from moveit_msgs.action import MoveGroup
+from rclpy.action import ActionServer, ActionClient, CancelResponse, GoalResponse
+from rclpy.action.server import ServerGoalHandle
+from rclpy.action.client import GoalStatus
+from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 from geometry_msgs.msg import Pose, Vector3, PoseStamped
-from moveit_msgs.msg import Constraints, JointConstraint, AttachedCollisionObject, CollisionObject
-import rclpy.time
+from kuka_interfaces.action import MoveToPose as WrapperAction
+from tf2_ros import TransformListener, Buffer
 from sensor_msgs.msg import JointState
+from moveit_msgs.srv import GetPositionIK
+from moveit_msgs.action import MoveGroup as TargetAction
+from moveit_msgs.msg import Constraints, JointConstraint, AttachedCollisionObject, CollisionObject
 from std_msgs.msg import Header
 from shape_msgs.msg import SolidPrimitive
-from moveit_msgs.srv import GetPositionIK
-from tf2_ros import TransformListener, Buffer
-from rclpy.executors import MultiThreadedExecutor
-from rclpy.callback_groups import ReentrantCallbackGroup
-from enum import Enum
-from threading import Lock
-from rclpy.action import ActionServer, GoalResponse, CancelResponse
-from rclpy.action.server import ServerGoalHandle
-from kuka_interfaces.action import MoveToPose
 
-class NodeState(Enum):
-    IDLE = 0
-    PLANNING = 1
-    EXECUTING = 2
+def clamp(value, min_value, max_value):
+    """Clamp a value between min and max values."""
+    return max(min(value, max_value), min_value)
 
-
-class MoveToPoseServerNode(Node):
-
-    ################# INITIALIZE NODE #################
-
-    def __init__(self, robot_name='med14_tc', _sub_echo=False):
+class MoveToPoseServer(Node):
+    def __init__(self):
         super().__init__('move_to_pose_server')
 
-        ######### INITIALIZE PROGRAM VARIABLES #########
+        self._sub_echo = False
 
-        # State management
-        self.state = NodeState.IDLE
-        self.state_lock = Lock()
-        # for handling goal states and action server/client
-        # self.move_to_pose_goal_handle_: ServerGoalHandle = None
-        # self.move_to_pose_goal_lock_ = threading.Lock()
-        self.move_action_executing_ = False
-        self.move_action_goal_handle_: ClientGoalHandle = None
-        self.cb_group = ReentrantCallbackGroup()
+        # Set the robot name parameter and assocuated topics/services/actions
+        self.declare_parameter('robot_name', 'med14_tc')
+        self.robot_name = self.get_parameter('robot_name').value
 
+        self.planning_gropus = ['arm', 'gripper']
 
-        # set the flag for which robot we are using (important for what channels to subscribe to/publish to)
-        self.robot_name = robot_name
+        self.joint_state_topic_name = 'lbr/joint_states'
+        self.move_action_name = '/lbr/move_action'
+        self.joint_names = {
+            'arm': ['lbr_A1', 'lbr_A2', 'lbr_A3', 'lbr_A4', 'lbr_A5', 'lbr_A6', 'lbr_A7'],
+            'gripper': ['lbr_finger_joint'],
+            'all': ['lbr_left_inner_finger_joint',
+                      'lbr_right_inner_knuckle_joint',
+                      'lbr_right_outer_knuckle_joint',
+                      'lbr_right_inner_finger_joint',
+                      'lbr_left_inner_knuckle_joint',
+                      'lbr_A2',
+                      'lbr_A3',
+                      'lbr_A4',
+                      'lbr_A6',
+                      'lbr_finger_joint',
+                      'lbr_A1',
+                      'lbr_A5',
+                      'lbr_A7']
+            }
+        self.ws_bounds = (Vector3(x=-1.0,y=-1.0,z=-1.0), Vector3(x=1.0,y=1.0,z=1.0))
+        self.ik_solver_name = '/lbr/compute_ik'
+
         if self.robot_name == 'med14':
-            self.joint_state_topic_name = '/lbr/joint_states'
-            self.move_action_name = '/lbr/move_action'
-            self.arm_joint_names = ['lbr_A1', 'lbr_A2', 'lbr_A3', 'lbr_A4', 'lbr_A5', 'lbr_A6', 'lbr_A7']
-            self.ik_solver_name = '/lbr/compute_ik'
             self.ee_frame = 'lbr_link_7'
             self.base_frame = 'lbr_link_1'
+            self.get_logger().info('M2P SRV: Robot name set to "med14"')
+
         elif self.robot_name == 'med14_tc':
-            self.joint_state_topic_name = '/lbr/joint_states'
-            self.move_action_name = '/lbr/move_action'
-            self.arm_joint_names = ['lbr_A1', 'lbr_A2', 'lbr_A3', 'lbr_A4', 'lbr_A5', 'lbr_A6', 'lbr_A7']
-            self.ik_solver_name = '/lbr/compute_ik'
             self.ee_frame = 'lbr_tendon_robot_link'
             self.base_frame = 'lbr_link_1'
+            self.get_logger().info('M2P SRV: Robot name set to "med14_tc"')
+
+        elif self.robot_name == 'med14_robotiq_2f':
+            self.ee_frame = 'lbr_robotiq_140_base_link'
+            self.base_frame = 'lbr_floating_link'
+            self.get_logger().info('M2P SRV: Robot name set to "med14_robotiq_2f"')
+
         else:
-            self.get_logger().warn('No valid robot name specified in MoveToGoal() initialization, various topics/services/actions may not work!') 
-            self.joint_state_topic_name = 'joint_states'
+            self.get_logger().warn('M2P SRV: No valid robot name specified in MoveToGoal() initialization, various topics/services/actions may not work!') 
+            self.joint_state_topic_name = '/joint_states'
+            self.ee_frame = 'lbr_link_7'
+            self.base_frame = 'lbr_link_1'
 
-        # set subscriber echo flag
-        self._sub_echo = _sub_echo
+        # Use ReentrantCallbackGroup to allow concurrent callbacks
+        self.callback_group = ReentrantCallbackGroup()
+        
+        # Add thread lock for goal state management
+        self._lock = threading.Lock()
+        # Flag to track if a goal is active
+        self._is_active = False
+        # Store the currently active goal handle
+        self._current_goal_handle = None
 
-        # set the workspace bounds
-        self.ws_bounds = (Vector3(x=-1.0,y=-1.0,z=-1.0), Vector3(x=1.0,y=1.0,z=1.0))
+        ############################################
+        # IK SERVICE CLIENT
+        ############################################
+        self.ik_service_client = self.create_client(
+            GetPositionIK, 
+            self.ik_solver_name,
+            callback_group=self.callback_group
+            )
+                # wait for move_group to be started
+        while not self.ik_service_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('M2P SRV: IK service not available, waiting for IK service...')
+        self.get_logger().info("M2P SRV: IK service has been started")
 
+        ############################################
+        # M2P WRAPPER ACTION SERVER (MOVE_TO_POSE)
+        ############################################
+        # Create the action server - this is what clients will connect to
+        self._action_server = ActionServer(
+            self,
+            WrapperAction,  # The action type for this wrapper
+            'move_to_pose',  # The action name
+            self.execute_callback,  # Called when a goal is accepted
+            callback_group=self.callback_group,
+            goal_callback=self.goal_callback,  # Called when a goal is received
+            cancel_callback=self.cancel_callback,  # Called when a cancel request is received
+        )
+        
+        ############################################
+        # TARGET ACTION CLIENT (MOVE_ACTION)
+        ############################################
+        # Create the action client - this connects to the target server (move_action)
+        self._action_client = ActionClient(
+            self,
+            TargetAction,  # The target action type
+            self.move_action_name,  # The target action name
+            callback_group=self.callback_group
+        )
+        while not self._action_client.wait_for_server(timeout_sec=1.0):
+            self.get_logger().info('M2P SRV: Target action server (move_action) not available, waiting for target action server...')
+        self.get_logger().info("M2P SRV: Target action server (move_action) has been started")
+        
+        ############################################
+        # TF BUFFER AND LISTENER
+        ############################################
         # Create a TF buffer and listener, objects for storing joint state and ee pose
         self.tf_buffer = Buffer() 
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.ee_pose = Pose()
-        self.medbot_joint_state = JointState()
+        self.tf_update_timer = self.create_timer(
+            0.002,       # update at 500 hz
+            self.ee_pose_listener_callback
+            )
+        self.get_logger().info("M2P SRV: End-effector pose listener has been started")
 
-        ######### INITIALIZE ROS NODES #########
-        # # Create desired pose subscriber
-        # self.pose_sub = self.create_subscription(
-        #     PoseStamped,
-        #     '/lbr/move_to_pose/desired_pose',
-        #     self.pose_sub_callback,
-        #     10,
-        #     callback_group=self.cb_group
-        # )
-
+        ############################################
+        # JOINT STATE SUBSCRIBER
+        ############################################
         # create joint state subscriber
+        self.current_joint_state = {
+            'arm': JointState(),
+            'gripper': JointState(),
+            'total': JointState()
+            }
         self.joint_state_sub_ = self.create_subscription(
             JointState,
             self.joint_state_topic_name,
             self.joint_state_listener_callback,
             100     # the topic publishes at approx. 200 hz so can go up to that if needed
             )
-        self.get_logger().info("MoveToPose joint state subscriber has been started")
+        self.get_logger().info("M2P SRV: MoveToPose joint state subscriber has been started")
 
-        # create timer for executing ee pose update callback
-        self.tf_update_timer = self.create_timer(
-            0.01,       # update at 100 hz
-            self.ee_pose_listener_callback
-            )
-        self.get_logger().info("End-effector pose listener has been started")
 
-        # create the action client for sending the planning and execution request to moveit
-        self.move_action_client = ActionClient(
-            self, 
-            MoveGroup, 
-            self.move_action_name,
-            callback_group=self.cb_group
-            )
-
-        # create a client for the GetPositionIK service
-        self.ik_service_client = self.create_client(
-            GetPositionIK, 
-            self.ik_solver_name,
-            callback_group=self.cb_group
-            )
-
-        # wait for move_group to be started
-        while not self.ik_service_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('MoveGroup services not available, waiting...')
-        self.get_logger().info("MoveGroup services have been started")
-
-        # Add Action Server
-        self.pose_action_server = ActionServer(
-            self,
-            PoseStamped,
-            'pose_goal',
-            execute_callback=self.pose_execute_callback,
-            goal_callback=self.pose_goal_callback,
-            cancel_callback=self.pose_cancel_callback,
-            callback_group=self.cb_group
-        )
-        self.get_logger().info("Move to pose action server has been started")
-
-    
-    ################# DEFINE CALLBACKS #################
-
-    def pose_goal_callback(self, goal_request):
-        """Handle new goal request"""
-        with self.state_lock:
-            if self.state != NodeState.IDLE:
-                self.get_logger().warn("Node busy, rejecting goal")
-                return GoalResponse.REJECT
-            self.state = NodeState.PLANNING
-            return GoalResponse.ACCEPT
-
-    def pose_cancel_callback(self, goal_handle):
-        """Handle goal cancellation"""
-        self.get_logger().info("Received cancel request")
-        return CancelResponse.ACCEPT
-
-    async def pose_execute_callback(self, goal_handle: ServerGoalHandle):
-        """Execute goal asynchronously"""
-        try:
-            # Get pose from goal
-            goal_pose = goal_handle.request
-
-            # Request IK solution asynchronously
-            joint_positions = await self.convert_pose_to_joint_angles(goal_pose)
-            if not joint_positions:
-                goal_handle.abort()
-                return MoveToPose.Result()
-
-            # Execute move
-            success = await self.execute_move(joint_positions)
-            if not success:
-                goal_handle.abort()
-                return MoveToPose.Result()
-
-            # Return success
-            goal_handle.succeed()
-            return self.create_result()
-
-        except Exception as e:
-            self.get_logger().error(f"Move failed: {e}")
-            goal_handle.abort()
-            return MoveToPose.Result()
-
-        finally:
-            with self.state_lock:
-                self.state = NodeState.IDLE
-
-    # async def pose_sub_callback(self, msg):
-    #     """Non-blocking pose callback"""
+        # Dictionary to keep track of active target goal handle
+        self._target_goal_handle = None
         
-    #     with self.state_lock:
-    #         if self.state != NodeState.IDLE:
-    #             self.get_logger().warn("Node busy, rejecting new goal")
-    #             return
-    #         self.state = NodeState.PLANNING
-        
-    #     try:
-    #         # Request IK solution asynchronously
-    #         joint_positions = await self.convert_pose_to_joint_angles(msg)
-    #         if not joint_positions:
-    #             raise Exception("No IK solution found")
-                
-    #         # Create and send goal
-    #         success = await self.execute_move(joint_positions)
-    #         if not success:
-    #             raise Exception("Move execution failed")
-                
-    #     except Exception as e:
-    #         self.get_logger().error(f"Move failed: {e}")
-            
-    #     finally:
-    #         with self.state_lock:
-    #             self.state = NodeState.IDLE
+        self.get_logger().info('M2P SRV: Wrapper action server has been started')
 
-    async def get_ik_solution(self, pose_msg):
-        """Non-blocking IK service call"""
-        request = GetPositionIK.Request()
-        request.ik_request.pose_stamped = pose_msg
-        
-        try:
-            response = await self.ik_service_client.call_async(request)
-            if response.error_code.val == response.error_code.SUCCESS:
-                return response.solution.joint_state.position
-        except Exception as e:
-            self.get_logger().error(f"IK failed: {e}")
-        return None
-
-    async def execute_move(self, joint_positions):
-        """Non-blocking move execution"""
-        with self.state_lock:
-            self.state = NodeState.EXECUTING
-            
-        try:
-            # Create goal
-            goal_msg = self.create_move_group_goal(joint_positions)
-            
-            # Send goal
-            goal_handle = await self.move_action_client.send_goal_async(goal_msg)
-            if not goal_handle.accepted:
-                return False
-                
-            # Wait for result
-            result = await goal_handle.get_result_async()
-            return result.status == GoalStatus.STATUS_SUCCEEDED
-            
-        finally:
-            with self.state_lock:
-                self.state = NodeState.IDLE
-
-    # def pose_sub_callback(self, msg: PoseStamped):
-    #     """Callback when new pose is received"""
-    #     self.get_logger().info('Received new pose')
-        
-    #     # Skip if another move is in progress
-    #     if self.move_action_executing_:
-    #         self.get_logger().warn("Already executing a move, skipping new goal")
-    #         return
-
-    #     self.move_action_executing_ = True
-    #     self.execute_move(msg)
-
-    # def execute_move(self, goal_pose):
-    #     """Execute move to pose asynchronously"""
-    #     try:
-    #         planning_group = 'arm'
-            
-    #         # Find IK solution
-    #         self.get_logger().info("Finding IK solution")
-    #         joint_positions = self.convert_pose_to_joint_angles(goal_pose, planning_group)
-
-    #         if joint_positions is None:
-    #             self.get_logger().error("No valid IK solution found")
-    #             self.move_action_executing_ = False
-    #             return
-
-    #         # Create and send goal
-    #         move_goal = self.create_move_group_goal(joint_positions, planning_group)
-    #         self.move_action_client.wait_for_server()
-            
-    #         send_goal_future = self.move_action_client.send_goal_async(move_goal)
-    #         send_goal_future.add_done_callback(self.goal_response_callback)
-
-    #     except Exception as e:
-    #         self.get_logger().error(f"Failed to execute move: {e}")
-    #         self.move_action_executing_ = False
-
-    # def goal_response_callback(self, future):
-    #     goal_handle = future.result()
-    #     if not goal_handle.accepted:
-    #         self.get_logger().warn('Goal rejected')
-    #         self.move_action_executing_ = False
-    #         return
-
-    #     self.get_logger().info('Goal accepted')
-    #     result_future = goal_handle.get_result_async()
-    #     result_future.add_done_callback(self.goal_result_callback)
-
-    # def goal_result_callback(self, future):
-    #     status = future.result().status
-    #     if status == GoalStatus.STATUS_SUCCEEDED:
-    #         self.get_logger().info("Move completed successfully")
-    #     else:
-    #         self.get_logger().warn(f"Move failed with status: {status}")
-        
-    #     self.move_action_executing_ = False
-
-    # def pose_sub_callback(self, msg: PoseStamped):
-    #     """Callback when new pose is received"""
-    #     self.get_logger().info('Received new pose')
-
-    #     self.get_logger().info("Executing a goal...")
-    #     try:
-
-    #         # Get request from the msg
-    #         goal_pose = msg
-    #         planning_group = 'arm'
-
-    #         # send a request to the IK solver to get joint positions for the desired pose
-    #         self.get_logger().info("Finding IK solution")
-    #         joint_positions = self.convert_pose_to_joint_angles(goal_pose, planning_group)
-
-    #         if joint_positions is None:
-    #             self.get_logger().error("No valid IK solution found, aborting goal")
-
-    #         # create the goal message for the MoveGroup action server
-    #         self.get_logger().info("Creating MoveGroup goal message")
-    #         move_goal = self.create_move_group_goal(joint_positions, planning_group)
-
-    #         # once the server is up, send the goal
-    #         self.move_action_client.wait_for_server()
-    #         self.get_logger().info("Sending MoveGroup goal message to MoveIt server")
-    #         send_goal_future = self.move_action_client.send_goal_async(move_goal)
-
-    #         # check if the goal was accepted by the MoveGroup action server
-    #         if send_goal_future is None:
-    #             self.get_logger().error("Failed to send goal to MoveIt action server")
-
-    #         rclpy.spin_until_future_complete(self, send_goal_future)
-    #         self.move_action_goal_handle_ = send_goal_future.result()
-
-    #         if not self.move_action_goal_handle_.accepted:
-    #             self.get_logger().warn("Goal was rejected by MoveIt action server")
-
-    #         self.get_logger().info("Goal was accepted by MoveIt action server")
-    #         get_result_future = self.move_action_goal_handle_.get_result_async()
-    #         rclpy.spin_until_future_complete(self, get_result_future)
-    #         status = get_result_future.result().status
-
-    #         if status == GoalStatus.STATUS_SUCCEEDED:
-    #             self.get_logger().info("MoveIt action server goal successfully executed")
-    #         elif status == GoalStatus.STATUS_ABORTED:
-    #             self.get_logger().error("MoveIt action server goal aborted")
-    #         elif status == GoalStatus.STATUS_CANCELED:
-    #             self.get_logger().warn("MoveIt action server goal canceled")
-
-    #     except Exception as e: 
-    #         self.get_logger().error(f"Aborting goal\n{e}")
-
-        
-    # def move_to_pose_goal_callback(self, goal_request: MoveToPose.Goal):
-    #     """
-    #     This is the callback for checking if the goal sent to the MoveToPose action server 
-    #     was accepted or rejected.
-
-    #     Current policy is: reject new goal if current goal is still executing
-    #     """
-        
-    #     # Policy 1: refuse new goals if current goal is still active
-    #     # self.get_logger().info("Checking for active goals...")
-    #     # with self.move_to_pose_goal_lock_:
-    #     #     if self.move_to_pose_goal_handle_ is not None and self.move_to_pose_goal_handle_.is_active:
-    #     #         self.get_logger().info("A goal is already active, rejecting new goal")
-    #     #         return GoalResponse.REJECT
-
-    #     self.get_logger().info("Recieved MoveToPose goal request")
-    #     return GoalResponse.ACCEPT
-
-
-    # def move_to_pose_cancel_callback(self, goal_handle: ServerGoalHandle):
-    #     self.get_logger().info("Recieved a MoveToPose server cancel request")
-    #     return CancelResponse.ACCEPT    # or REJECT
-    
-
-    # def move_to_pose_exe_callback(self, goal_handle: ServerGoalHandle):
-    #     """
-    #     If the goal sent to the MoveToPose action server is accepted then this callback is 
-    #     triggered to execute the goal.
-    #     """
-    #     self.get_logger().info("Executing a goal...")
-    #     try:
-            
-    #         # Policy 1: refuse new goals if current goal is still active
-    #         # with self.move_to_pose_goal_lock_:
-    #         #     self.move_to_pose_goal_handle_ = goal_handle
-
-    #         # Get request from the goal handle
-    #         goal_pose = self.create_goal_pose(goal_handle.request)
-    #         planning_group = 'arm'
-
-    #         # send a request to the IK solver to get joint positions for the desired pose
-    #         self.get_logger().info("Finding IK solution")
-    #         joint_positions = self.convert_pose_to_joint_angles(goal_pose, planning_group)
-
-    #         if joint_positions is None:
-    #             self.get_logger().error("No valid IK solution found, aborting goal")
-    #             goal_handle.abort()
-    #             # with self.move_to_pose_goal_lock_:
-    #             #     self.move_to_pose_goal_handle_ = None
-    #             result = self.generate_result()
-    #             return result
-
-    #         # create the goal message for the MoveGroup action server
-    #         self.get_logger().info("Creating MoveGroup goal message")
-    #         move_goal = self.create_move_group_goal(joint_positions, planning_group)
-
-    #         # once the server is up, send the goal
-    #         self.move_action_client.wait_for_server()
-    #         self.get_logger().info("Sending MoveGroup goal message to MoveIt server")
-    #         send_goal_future = self.move_action_client.send_goal_async(move_goal)
-
-    #         # check if the goal was accepted by the MoveGroup action server
-    #         if send_goal_future is None:
-    #             self.get_logger().error("Failed to send goal to MoveIt action server")
-    #             goal_handle.abort()
-    #             # with self.move_to_pose_goal_lock_:
-    #             #     self.move_to_pose_goal_handle_ = None
-    #             result = self.generate_result()
-    #             return result
-
-    #         rclpy.spin_until_future_complete(self, send_goal_future)
-    #         self.move_action_goal_handle_ = send_goal_future.result()
-
-    #         if not self.move_action_goal_handle_.accepted:
-    #             self.get_logger().warn("Goal was rejected by MoveIt action server")
-    #             goal_handle.abort()
-    #             # with self.move_to_pose_goal_lock_:
-    #             #     # self.move_to_pose_goal_handle_.abort()
-    #             #     self.move_to_pose_goal_handle_ = None
-    #             result = self.generate_result()
-    #             return result
-
-    #         self.get_logger().info("Goal was accepted by MoveIt action server")
-    #         get_result_future = self.move_action_goal_handle_.get_result_async()
-    #         rclpy.spin_until_future_complete(self, get_result_future)
-    #         status = get_result_future.result().status
-
-    #         if status == GoalStatus.STATUS_SUCCEEDED:
-    #             self.get_logger().info("MoveIt action server goal successfully executed")
-    #             goal_handle.succeed()
-    #             # with self.move_to_pose_goal_lock_:
-    #             #     self.move_to_pose_goal_handle_.succeed()
-    #         elif status == GoalStatus.STATUS_ABORTED:
-    #             self.get_logger().error("MoveIt action server goal aborted")
-    #             goal_handle.abort()
-    #             # with self.move_to_pose_goal_lock_:
-    #             #     self.move_to_pose_goal_handle_.abort()
-    #         elif status == GoalStatus.STATUS_CANCELED:
-    #             self.get_logger().warn("MoveIt action server goal canceled")
-    #             goal_handle.canceled()
-    #             # with self.move_to_pose_goal_lock_:
-    #             #     self.move_to_pose_goal_handle_.canceled()
-
-    #         # with self.move_to_pose_goal_lock_:
-    #         #     # goal_handle = self.move_to_pose_goal_handle_
-    #         #     self.move_to_pose_goal_handle_ = None
-
-
-    #     except Exception as e: 
-    #         self.get_logger().error(f"Aborting goal\n{e}")
-    #         goal_handle.abort()
-    #         # with self.move_to_pose_goal_lock_:
-    #         #     self.move_to_pose_goal_handle_ = None
-
-    #     # send the results
-    #     result = self.generate_result()
-
-    #     return result        
-
-    ### CLIENT CALLBACKS ###
-
-    # def cancel_move_action_goal(self):
-    #     # forward the cancel request to the moveit action server
-    #     self.get_logger().info("Forwarding a cancel request to the MoveIt action server")
-    #     self.move_action_goal_handle_.cancel_goal_async()
-
-    """
-    # def move_action_client_feedback_callback(self, future):
-    #     # Handle feedback from action server
-    #     pass
-
-
-    # def move_action_client_response_callback(self, future):
-    #     # Handle response from action server
-    #     self.move_action_goal_handle_ = future.result()
-
-    #     if self.move_action_goal_handle_.accepted:
-    #         # print that the goal was accepted
-    #         self.get_logger().info("Goal was accepted by MoveIt action server")
-            
-    #         self.move_action_goal_handle_.get_result_async().\
-    #             add_done_callback(self.move_action_client_result_callback)            
-
-    #     else:
-    #         # print that the goal was canceled
-    #         self.get_logger().warn("Goal was rejected by MoveIt action server")
-            
-    #         # set the flag for exiting the while loop in the exe callback
-    #         self.move_action_executing_ = False
-
-    #         # set the goal state for the MoveToPose goal handle to aborted
-    #         with self.move_to_pose_goal_lock_:
-    #             self.move_to_pose_goal_handle_.abort()
-        
-
-    # def move_action_client_result_callback(self, future):
-    #     # result = future.result().result
-    #     status = future.result().status
-
-    #     # set this flag so that we exit the while loop
-    #     self.move_action_executing_ = False
-
-    #     # if the goal was successful then set the MoveToPose goal handle to successful as well
-    #     if status == GoalStatus.STATUS_SUCCEEDED:
-    #         self.get_logger().info("MoveIt action server goal successfully executed")
-    #         with self.move_to_pose_goal_lock_:
-    #             self.move_to_pose_goal_handle_.succeed()
-
-    #     # if the goal was aborted then set the MoveToPose goal handle to aborted as well
-    #     elif status == GoalStatus.STATUS_ABORTED:
-    #         self.get_logger().error("MoveIt action server goal aborted")
-    #         with self.move_to_pose_goal_lock_:
-    #             self.move_to_pose_goal_handle_.abort()
-
-    #     # if the goal was canceled then set the MoveToPose goal handle to canceled as well
-    #     elif status == GoalStatus.STATUS_CANCELED:
-    #         self.get_logger().warn("MoveIt action server goal canceled")
-    #         with self.move_to_pose_goal_lock_:
-    #             self.move_to_pose_goal_handle_.canceled()
-    """
-
-    ### PUB/SUB CALLBACKS ###
-    def joint_state_listener_callback(self, msg):
-        # extract the joint state message from the topic
-        self.medbot_joint_state = msg
-
-        # if the flag is set to echo topics then echo using the logger
-        if self._sub_echo:
-            self.get_logger().info('Received joint state:') 
-            self.get_logger().info(f' Names: {self.medbot_joint_state.name}') 
-            self.get_logger().info(f' Positions: {self.medbot_joint_state.position}') 
-            self.get_logger().info(f' Velocities: {self.medbot_joint_state.velocity}') 
-            self.get_logger().info(f' Efforts: {self.medbot_joint_state.effort}')
-
-
+    # /***************************************************************************************************/
+    # /*    EE_POSE_LISTENER_CALLBACK                                                                    */
+    # /***************************************************************************************************/
     def ee_pose_listener_callback(self):
         try: 
             # Lookup transform from base_link to end_effector 
@@ -571,117 +189,330 @@ class MoveToPoseServerNode(Node):
             self.ee_pose.orientation.w = rotation.w
 
             if self._sub_echo:
-                self.get_logger().info(f"\nEnd Effector Position: x={translation.x}, y={translation.y}, z={translation.z}\nEnd Effector Orientation: x={rotation.x}, y={rotation.y}, z={rotation.z}, w={rotation.w}") 
+                self.get_logger().info(f"\nM2P SRV: End Effector Position: x={translation.x}, y={translation.y}, z={translation.z}\nEnd Effector Orientation: x={rotation.x}, y={rotation.y}, z={rotation.z}, w={rotation.w}") 
             
         except Exception as e: 
-            self.get_logger().warn(f"Could not get transform: {e}")
+            self.get_logger().warn(f"M2P SRV: Could not get transform: {e}")
 
+    # /***************************************************************************************************/
+    # /*    JOINT_STATE_LISTENER_CALLBACK                                                                */
+    # /***************************************************************************************************/
+    def joint_state_listener_callback(self, msg):
+        self.current_joint_state['all'] = msg
+        # extract the joint state message from the topic
+        for planning_group in self.planning_gropus:
+            # add the appropriate joint states to the appropriate entry in the dictionary
+            # Create a new joint state message for this planning group
+            group_joint_state = JointState()
+            group_joint_state.header = msg.header
 
-    ################# DEFINE HELPER FUNCTIONS #################
-    # def create_goal_pose(self, goal_request: MoveToPose.Goal):
-    #     """
-    #     Takes a goal request and creates a Pose message to be used in the MoveGroup goal.
-    #     """
-    #     quaternion = self.euler_to_quaternion(goal_request.roll, goal_request.pitch, goal_request.yaw)
+            # Ensure joints are in the same order as defined in joint_names
+            ordered_state = JointState()
+            ordered_state.header = group_joint_state.header
+            for name in self.joint_names[planning_group]:
+                if name in group_joint_state.name:
+                    idx = group_joint_state.name.index(name)
+                    ordered_state.name.append(name)
+                    ordered_state.position.append(group_joint_state.position[idx])
+                    # Also handle velocity and effort
+            self.current_joint_state[planning_group] = ordered_state
+            
+            # # Get the joint names for this planning group
+            # group_joint_names = self.joint_names[planning_group]
+            
+            # # For each joint in the incoming message
+            # for i, joint_name in enumerate(msg.name):
+            #     # If this joint belongs to the current planning group
+            #     if joint_name in group_joint_names:
+            #         # Add this joint to the group's joint state
+            #         group_joint_state.name.append(joint_name)
+            #         group_joint_state.position.append(msg.position[i])
+                    
+            #         if msg.velocity:
+            #             group_joint_state.velocity.append(msg.velocity[i])
+                    
+            #         if msg.effort:
+            #             group_joint_state.effort.append(msg.effort[i])
+            
+            # # Store the filtered joint state in the dictionary
+            # self.current_joint_state[planning_group] = group_joint_state
 
-    #     goal_pose = Pose()
-    #     goal_pose.position.x = goal_request.x
-    #     goal_pose.position.y = goal_request.y
-    #     goal_pose.position.z = goal_request.z
-    #     goal_pose.orientation.x = quaternion[0]
-    #     goal_pose.orientation.y = quaternion[1]
-    #     goal_pose.orientation.z = quaternion[2]
-    #     goal_pose.orientation.w = quaternion[3]
+        # if the flag is set to echo topics then echo using the logger
+        if self._sub_echo:
+            for planning_group in self.planning_gropus:
+                self.get_logger().info('Received joint state:') 
+                self.get_logger().info(f' Names: {self.current_joint_state[planning_group].name}') 
+                self.get_logger().info(f' Positions: {self.current_joint_state[planning_group].position}') 
+                self.get_logger().info(f' Velocities: {self.current_joint_state[planning_group].velocity}') 
+                self.get_logger().info(f' Efforts: {self.current_joint_state[planning_group].effort}')
 
-    #     return goal_pose
-
-
-    # def generate_result(self):
-    #     result = MoveToPose.Result()
-    #     position, rpy = self.get_end_effector_pose()
-    #     result.x = position.x
-    #     result.y = position.y
-    #     result.z = position.z
-    #     result.roll = rpy.x
-    #     result.pitch = rpy.y
-    #     result.yaw = rpy.z
-
-    #     return result
-
-
-    async def convert_pose_to_joint_angles(self, goal_pose: PoseStamped, planning_group='arm'):
-        """
-        Takes a goal pose and makes a call to the IK solver server to find a set of joint 
-        angles that satisfy that pose or return nothing if there is no valid solution.
-        """
-        # Create a request for the GetPositionIK service
-        request = GetPositionIK.Request()
-
-        # Populate the request
-        request.ik_request.group_name = planning_group
-        request.ik_request.robot_state.is_diff = False
-        request.ik_request.pose_stamped = goal_pose
-        request.ik_request.timeout.sec = 2
+    # /***************************************************************************************************/
+    # /*    M2P GOAL_CALLBACK                                                                            */
+    # /***************************************************************************************************/
+    def goal_callback(self, goal_request):
+        """Called when a goal is received from a client"""
+        self.get_logger().info('M2P SRV: Received goal request')
         
+        # Use thread locking to check if a goal is already active
+        with self._lock:
+            if self._is_active:
+                self.get_logger().warn('M2P SRV: Rejecting goal: Another goal is already active')
+                return GoalResponse.REJECT
+            else:
+                # # No active goal, check if there is a valid IK solution
+                # pose_msg = PoseStamped()
+                # pose_msg.header.frame_id = self.base_frame
+                # pose_msg.pose = goal_request.pose
+                # response = self.get_ik_solution(pose_msg)
+                # if response is None:
+                #     self.get_logger().warn('M2P SRV: Rejecting goal: No IK solution found')
+                #     return GoalResponse.REJECT
+                # else:
+                    self.get_logger().info('M2P SRV: Accepting goal')
+                    return GoalResponse.ACCEPT
+
+    # /***************************************************************************************************/
+    # /*    M2P CANCEL_CALLBACK                                                                          */
+    # /***************************************************************************************************/
+    def cancel_callback(self, goal_handle):
+        """Called when a cancel request is received"""
+        self.get_logger().info('M2P SRV: Received cancel request')
+        
+        with self._lock:
+            # Only allow cancellation of the current active goal
+            if goal_handle == self._current_goal_handle:
+                # Cancel the target goal if it exists
+                if self._target_goal_handle:
+                    self.get_logger().info('M2P SRV: Cancelling target goal')
+                    self._target_goal_handle.cancel_goal_async(self._target_goal_handle)
+                    
+                return CancelResponse.ACCEPT
+            
+        return CancelResponse.REJECT
+
+    # /***************************************************************************************************/
+    # /*    M2P EXECUTE_CALLBACK                                                                         */
+    # /***************************************************************************************************/
+    async def execute_callback(self, goal_handle):
+        """Called when a goal is accepted and should be executed"""
+        self.get_logger().info('M2P SRV: Executing goal...')
+        
+        # Set goal as active with thread safety
+        with self._lock:
+            self._is_active = True
+            self._current_goal_handle = goal_handle
+        
+        # Create a result object for possible early returns
+        wrapper_result = WrapperAction.Result()
+        
+        try:
+            # request IK solution
+            wrapper_goal_pse = goal_handle.request.desired_pose
+            ik_response = await self.get_ik_solution(wrapper_goal_pse)
+            if ik_response is None:
+                self.get_logger().warn('M2P SRV: No IK solution found')
+                goal_handle.abort()
+                wrapper_result.message = 'No IK solution found'
+                wrapper_result.success = False
+                return wrapper_result
+            
+            # Wait for the target action server to be available
+            if not self._action_client.wait_for_server(timeout_sec=1.0):
+                self.get_logger().error('M2P SRV: Target action server not available')
+                goal_handle.abort()
+                wrapper_result.message = 'Target action server not available'
+                wrapper_result.success = False
+                return wrapper_result
+            
+            # get velocity scaling
+            try:
+                vel_scaling = goal_handle.request.vel_scaling
+                vel_scaling = clamp(vel_scaling, 0.0, 1.0)
+            except:
+                vel_scaling = 0.1
+
+            # get acceleration scaling
+            try:
+                acc_scaling = goal_handle.request.acc_scaling
+                acc_scaling = clamp(acc_scaling, 0.0, 1.0)
+            except:
+                acc_scaling = 0.1
+
+            # get planning group
+            try:
+                planning_group = goal_handle.request.planning_group
+            except:
+                planning_group = 'arm'
+
+            # Map ik_response and planning params to target_goal
+            target_goal = self.create_move_group_goal(ik_response, planning_group, vel_scaling, acc_scaling)
+            
+            # Send the goal to the target action server
+            send_goal_future = self._action_client.send_goal_async(
+                target_goal,
+                feedback_callback=lambda feedback_msg: self._feedback_callback(goal_handle, feedback_msg)
+            )
+            
+            # Wait for the target server to accept the goal
+            target_goal_handle = await send_goal_future
+            if not target_goal_handle.accepted:
+                self.get_logger().error('M2P SRV: Target server rejected the goal')
+                goal_handle.abort()
+                wrapper_result.message = 'Target server rejected the goal'
+                wrapper_result.success = False
+                return wrapper_result
+            
+            # Store the target goal handle (thread-safe)
+            with self._lock:
+                self._target_goal_handle = target_goal_handle
+            
+            # Request the result from the target server
+            target_result_future = target_goal_handle.get_result_async()
+            
+            # Wait for the target action to complete
+            target_result = await target_result_future
+            
+            # Check if our wrapper goal was cancelled while waiting for the target
+            if goal_handle.is_cancel_requested:
+                goal_handle.canceled()
+                wrapper_result.message = 'Goal was cancelled'
+                wrapper_result.success = False
+                return wrapper_result
+            
+            # Create a PoseStamped object for the result
+            reached_pose_stamped = PoseStamped()
+            reached_pose_stamped.header.stamp = self.get_clock().now().to_msg()
+            reached_pose_stamped.header.frame_id = self.base_frame
+            reached_pose_stamped.pose = self.ee_pose
+
+            # Map target_result to wrapper_result
+            wrapper_result.message = "Target action completed, robot done moving"
+            wrapper_result.reached_pose = reached_pose_stamped
+            wrapper_result.success = target_result.status == GoalStatus.STATUS_SUCCEEDED
+            
+            # Determine final status based on target result status
+            if target_result.status == GoalStatus.STATUS_SUCCEEDED:
+                self.get_logger().info('M2P SRV: Target action completed successfully')
+                goal_handle.succeed()
+            else:
+                self.get_logger().warn(f'M2P SRV: Target action failed with status: {target_result.status}')
+                goal_handle.abort()
+                
+            return wrapper_result
+        
+        except Exception as e:
+            self.get_logger().error(f'M2P SRV: Failed to execute goal: {e}')
+            goal_handle.abort()
+            wrapper_result.message = 'Failed to execute goal'
+            wrapper_result.success = False
+            return wrapper_result
+            
+        finally:
+            # Always clean up state when done (thread-safe)
+            with self._lock:
+                self._is_active = False
+                self._current_goal_handle = None
+                self._target_goal_handle = None
+
+    # /***************************************************************************************************/
+    # /*    M2P FEEDBACK_CALLBACK                                                                        */
+    # /***************************************************************************************************/
+    def _feedback_callback(self, goal_handle, feedback_msg):
+        """
+        Called when feedback is received from the target action server
+
+        From MoveToPose.action:
+        # Feedback: current pose and planning state
+        geometry_msgs/PoseStamped current_pose
+        string state
+        """
+
+        # Convert target feedback to wrapper feedback
+        wrapper_feedback = WrapperAction.Feedback()
+        # Map target_feedback to wrapper_feedback
+        header = Header()
+        header.stamp = self.get_clock().now().to_msg()
+        header.frame_id = self.base_frame
+        wrapper_feedback.current_pose.header = header
+        wrapper_feedback.current_pose.pose = self.ee_pose   
+        wrapper_feedback.state = "Executing motion plan"
+
+        # Publish feedback to the wrapper client
+        goal_handle.publish_feedback(wrapper_feedback)
+
+    # /***************************************************************************************************/
+    # /*    GET_IK_SOLUTION                                                                              */
+    # /***************************************************************************************************/
+    async def get_ik_solution(self, pose_msg, planning_group='arm'):
+        """Non-blocking IK service call"""
+        request = GetPositionIK.Request()
+        request.ik_request.pose_stamped = pose_msg
+        request.ik_request.group_name = planning_group
+        request.ik_request.ik_link_name = self.ee_frame
+        # request.ik_request.robot_state = self.medbot_joint_state
+        request.ik_request.timeout = rclpy.time.Duration(seconds=1.0).to_msg()
+
         try:
             response = await self.ik_service_client.call_async(request)
             if response.error_code.val == response.error_code.SUCCESS:
                 return response.solution.joint_state.position
+            else:
+                self.get_logger().warn(f"IK failed: {response.error_code}")
         except Exception as e:
             self.get_logger().error(f"IK failed: {e}")
         return None
-        # # Call the service and wait for the response
-        # future = self.ik_service_client.call_async(request)
-        # rclpy.spin_until_future_complete(self, future, timeout_sec=1.0)
-        # response = future.result()
+    
+    # /***************************************************************************************************/
+    # /*    CREATE_MOVE_GROUP_GOAL                                                                       */
+    # /***************************************************************************************************/
+    def create_move_group_goal(self, joint_positions, planning_group='arm', vel_scaling=0.1, acc_scaling=0.1):
+        try:
+            goal = TargetAction.Goal()
 
-        # if response.error_code.val == response.error_code.SUCCESS:
-        #     joint_values = response.solution.joint_state.position
-        #     self.get_logger().info(f'Successfully found IK solution: {joint_values}')
-        #     return joint_values
-        # else:
-        #     self.get_logger().error('Failed to find IK solution')
-        #     return None
+            # Set workspace parameters
+            goal = self.set_ws_params(goal)
 
+            # Set start state
+            goal = self.set_start_state(goal)
 
-    def create_move_group_goal(self, joint_positions, planning_group='arm'):
-        goal = MoveGroup.Goal()
+            # attach collision objects
+            # goal.request.start_state.attached_collision_objects.append(self.create_collision_object())
 
-        # Set workspace parameters
-        goal = self.set_ws_params(goal)
+            # Set goal constraints
+            try:
+                goal_constraints = self.create_joint_angle_constraints(self.joint_names[planning_group], joint_positions)
+            except:
+                self.get_logger().error("Invalid planning group specified during goal creation! Possible mismatch between joint positions found by IK solver and joint names specified!")
+                return None
+            
+            goal.request.goal_constraints.append(goal_constraints)
 
-        # Set start state
-        goal = self.set_start_state(goal)
-        goal.request.start_state.attached_collision_objects.append(self.create_collision_object())
+            # Set path constraints (empty in this case)
+            goal.request.path_constraints = Constraints()
 
-        # Set goal constraints
-        if planning_group=='arm':
-            goal_constraints = self.create_joint_angle_constraints(self.arm_joint_names, joint_positions)
-        else:
-            self.get_logger().error("Invalid planning group specified during goal creation!")
+            # Set trajectory constraints (empty in this case)
+            goal.request.trajectory_constraints.constraints = []
 
-        goal.request.goal_constraints.append(goal_constraints)
+            # Set other parameters
+            goal.request.pipeline_id = 'ompl'
+            goal.request.planner_id = ''
+            goal.request.group_name = planning_group
+            goal.request.num_planning_attempts = 10
+            goal.request.allowed_planning_time = 5.0
+            goal.request.max_velocity_scaling_factor = vel_scaling
+            goal.request.max_acceleration_scaling_factor = acc_scaling
+            goal.request.cartesian_speed_end_effector_link = ''
+            goal.request.max_cartesian_speed = 0.0
 
-        # Set path constraints (empty in this case)
-        goal.request.path_constraints = Constraints()
+            return goal
 
-        # Set trajectory constraints (empty in this case)
-        goal.request.trajectory_constraints.constraints = []
+        except Exception as e:
+            self.get_logger().error(f"Error creating move group goal: {e}")
+            return None
 
-        # Set other parameters
-        goal.request.pipeline_id = 'ompl'
-        goal.request.planner_id = ''
-        goal.request.group_name = planning_group
-        goal.request.num_planning_attempts = 10
-        goal.request.allowed_planning_time = 5.0
-        goal.request.max_velocity_scaling_factor = 0.1
-        goal.request.max_acceleration_scaling_factor = 0.1
-        goal.request.cartesian_speed_end_effector_link = ''
-        goal.request.max_cartesian_speed = 0.0
-
-        return goal
-
-       
+    # /***************************************************************************************************/
+    # /*    CREATE_JOINT_ANGLE_CONSTRAINTS                                                               */
+    # /***************************************************************************************************/
     def create_joint_angle_constraints(self, joint_names, positions):
         constraints = Constraints()
 
@@ -697,8 +528,10 @@ class MoveToPoseServerNode(Node):
 
         return constraints
 
-
-    def set_ws_params(self, goal:MoveGroup.Goal):
+    # /***************************************************************************************************/
+    # /*    SET_WS_PARAMS                                                                                */
+    # /***************************************************************************************************/
+    def set_ws_params(self, goal:TargetAction.Goal):
         """
         workspace_parameters=moveit_msgs.msg.WorkspaceParameters(
             header=std_msgs.msg.Header(
@@ -752,8 +585,10 @@ class MoveToPoseServerNode(Node):
 
         return goal
 
-
-    def set_start_state(self, goal:MoveGroup.Goal):
+    # /***************************************************************************************************/
+    # /*    SET_START_STATE                                                                              */
+    # /***************************************************************************************************/
+    def set_start_state(self, goal:TargetAction.Goal):
         """
         start_state=moveit_msgs.msg.RobotState(
             joint_state=sensor_msgs.msg.JointState(
@@ -817,7 +652,7 @@ class MoveToPoseServerNode(Node):
         """
         
         try:
-            goal.request.start_state.joint_state = self.medbot_joint_state
+            goal.request.start_state.joint_state = self.current_joint_state['arm']
         except:
             self.get_logger().warn("Joint state published not started, may be unable to complete planning requests.")
 
@@ -825,7 +660,9 @@ class MoveToPoseServerNode(Node):
 
         return goal
 
-
+    # /***************************************************************************************************/
+    # /*    CREATE_COLLISION_OBJECT                                                                      */
+    # /***************************************************************************************************/
     def create_collision_object(self):
         # Create the AttachedCollisionObject 
         attached_object = AttachedCollisionObject() 
@@ -857,107 +694,27 @@ class MoveToPoseServerNode(Node):
         return attached_object 
     
 
-    # def euler_to_quaternion(self, roll, pitch, yaw):
-    #     """Converts Euler angles (in radians) to a quaternion."""
-    #     cy = np.cos(yaw * 0.5)
-    #     sy = np.sin(yaw * 0.5)
-    #     cp = np.cos(pitch * 0.5)
-    #     sp = np.sin(pitch * 0.5)
-    #     cr = np.cos(roll * 0.5)
-    #     sr = np.sin(roll * 0.5)
-
-    #     w = cr * cp * cy + sr * sp * sy
-    #     x = sr * cp * cy - cr * sp * sy
-    #     y = cr * sp * cy + sr * cp * sy
-    #     z = cr * cp * sy - sr * sp * cy
-
-    #     return [x, y, z, w]
-
-
-    # def quaternion_to_euler(self, x, y, z, w):
-    #     """
-    #     Convert a quaternion into euler angles (roll, pitch, yaw)
-    #     roll is rotation around x-axis
-    #     pitch is rotation around y-axis
-    #     yaw is rotation around z-axis
-    #     """
-    #     # Roll (x-axis rotation)
-    #     sinr_cosp = 2 * (w * x + y * z)
-    #     cosr_cosp = 1 - 2 * (x * x + y * y)
-    #     roll = np.arctan2(sinr_cosp, cosr_cosp)
-
-    #     # Pitch (y-axis rotation)
-    #     sinp = 2 * (w * y - z * x)
-    #     if np.abs(sinp) >= 1:
-    #         pitch = np.sign(sinp) * np.pi / 2  # use 90 degrees if out of range
-    #     else:
-    #         pitch = np.arcsin(sinp)
-
-    #     # Yaw (z-axis rotation)
-    #     siny_cosp = 2 * (w * z + x * y)
-    #     cosy_cosp = 1 - 2 * (y * y + z * z)
-    #     yaw = np.arctan2(siny_cosp, cosy_cosp)
-
-    #     return roll, pitch, yaw
-
-
-    # def get_end_effector_pose(self): 
-        
-    #     pos = Vector3()
-    #     rpy = Vector3()
-        
-    #     try: 
-    #         # Lookup transform from base_link to end_effector 
-            
-    #         self.ee_pose.position
-            
-    #         # Extract translation and rotation from the transform 
-    #         translation = self.ee_pose.position 
-    #         rotation = self.ee_pose.orientation
-
-    #         pos.x = translation.x
-    #         pos.y = translation.y
-    #         pos.z = translation.z
-
-    #         roll, pitch, yaw = self.quaternion_to_euler(rotation.x, rotation.y, rotation.z, rotation.w)
-
-    #         rpy.x = roll
-    #         rpy.y = pitch
-    #         rpy.z = yaw
-            
-    #         if self._sub_echo:
-    #             self.get_logger().info(f"End Effector Position: x={translation.x}, y={translation.y}, z={translation.z}") 
-    #             self.get_logger().info(f"End Effector Orientation: x={rotation.x}, y={rotation.y}, z={rotation.z}, w={rotation.w}") 
-            
-    #     except Exception as e: 
-    #         self.get_logger().warn(f"Could not get transform: {e}")
-
-    #     return pos, rpy
-
-
-    # ### UNUSED FUNCTIONS (FROM PROTOTYPING, DELETE ONCE NOT NEEDED)
-    # def send_goal_to_move_group(self, goal_pose: Pose, planning_group='arm'):
-        
-    #     try:
-    #         # create the goal
-    #         goal = self.create_move_group_goal(goal_pose, planning_group)
-            
-    #         # once the server is up, send the goal
-    #         self.move_action_client.wait_for_server()
-    #         future = self.move_action_client.send_goal_async(goal, feedback_callback=self.goal_feedback_callback).add_done_callback(self.goal_response_callback)
-        
-    #     except Exception as e: 
-    #         self.get_logger().error(f"Aborting goal\n{e}")
-    #         ### ABORT THE GOAL
-
 
 def main(args=None):
     rclpy.init(args=args)
-    node = MoveToPoseServerNode()
+    
+    # Create node
+    m2p_action_server = MoveToPoseServer()
+    
+    # Use MultiThreadedExecutor to allow concurrent callbacks
     executor = MultiThreadedExecutor()
-    executor.add_node(node)
-    executor.spin()
-    rclpy.shutdown()
+    executor.add_node(m2p_action_server)
+    
+    try:
+        # Start processing callbacks
+        executor.spin()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        # Clean up
+        executor.shutdown()
+        m2p_action_server.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':

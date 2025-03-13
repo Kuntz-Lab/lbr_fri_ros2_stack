@@ -16,10 +16,9 @@ def generate_launch_description() -> LaunchDescription:
     mode = LaunchConfiguration('mode', default='mock')
 
     ############################################
-    # MOCK OR HARDWARE LAUNCH
+    # MOCK LAUNCH
     ############################################
     # Include mock.launch.py conditionally
-    # if mode == 'mock' or mode == 'gazebo':
     mock_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
@@ -47,7 +46,7 @@ def generate_launch_description() -> LaunchDescription:
         executable='spawner',
         arguments=['robotiq_gripper_controller', '--controller-manager', 'controller_manager'],
         namespace='lbr',
-        condition=IfCondition(PythonExpression(["'", mode, "' == 'mock'"]))
+        condition=IfCondition(PythonExpression(["'", model, "' == 'med14_robotiq_2f'"]))
     )
     ld.add_action(robotiq_gripper_controller_spawner)
                 
@@ -56,27 +55,54 @@ def generate_launch_description() -> LaunchDescription:
         executable='spawner',
         arguments=['robotiq_activation_controller', '--controller-manager', 'controller_manager'],
         namespace='lbr',
-        condition=IfCondition(PythonExpression(["'", mode, "' == 'mock'"]))
+        condition=IfCondition(PythonExpression(["'", model, "' == 'med14_robotiq_2f'"]))
     )
     ld.add_action(robotiq_activation_controller_spawner)
 
-    ############################################
-    # RVIZ
-    ############################################
-    # Include RViz if rviz is true
-    rviz_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([
-            PathJoinSubstitution([
-                FindPackageShare('lbr_bringup'),
-                'launch',
-                'rviz.launch.py'
-            ])
-        ]),
-        launch_arguments={
-            'model': model
-        }.items()
-    )
-    ld.add_action(rviz_launch)
+    # ############################################
+    # # HARDWARE LAUNCH
+    # ############################################
+    # # Include hardware.launch.py conditionally
+    # hardware_launch = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource([
+    #         PathJoinSubstitution([
+    #             FindPackageShare('lbr_bringup'),
+    #             'launch',
+    #             'hardware.launch.py'
+    #         ])
+    #     ]),
+    #     launch_arguments={
+    #         'model': model,
+    #         'ctrl_cfg_pkg': 'lbr_description',
+    #         'ctrl_cfg': 'ros2_control/combined_controllers.yaml',  # Use combined controllers
+    #         'use_fake_hardware': 'false'
+    #     }.items()
+    #     ,
+    #     condition=IfCondition(
+    #         PythonExpression([
+    #             "'", mode, "' == 'hardware'"
+    #         ])
+    #     )
+    # )
+    # ld.add_action(hardware_launch)
+
+    # ############################################
+    # # RVIZ
+    # ############################################
+    # # Include RViz if rviz is true
+    # rviz_launch = IncludeLaunchDescription(
+    #     PythonLaunchDescriptionSource([
+    #         PathJoinSubstitution([
+    #             FindPackageShare('lbr_bringup'),
+    #             'launch',
+    #             'rviz.launch.py'
+    #         ])
+    #     ]),
+    #     launch_arguments={
+    #         'model': model
+    #     }.items()
+    # )
+    # ld.add_action(rviz_launch)
 
     ############################################
     # MOVE-IT
@@ -93,27 +119,35 @@ def generate_launch_description() -> LaunchDescription:
         launch_arguments={
             'mode': mode,
             'rviz': rviz,
-            'model': model,
-            # 'ctrl_cfg': PathJoinSubstitution([
-            #     FindPackageShare('med14_robotiq_2f_moveit_config'),
-            #     'config', 
-            #     'lbr_robotiq_controllers.yaml'
-            # ])  # Pass the robotiq controllers YAML
+            'model': model
         }.items()
     )
     ld.add_action(move_group_launch)
     
     ############################################
-    # MOVE TO POSE
+    # MOVE TO POSE SUBSCRIPTION
     ############################################
-    # Launch move_to_pose node
+    # # Launch move_to_pose node
     # move_to_pose_node = Node(
     #     package='kuka_motion',
     #     executable='move_to_pose',
     #     name='move_to_pose',
     #     output='screen',
-    #     parameters=[{'robot_name': model}]
+    #     parameters=[{'robot_name': PythonExpression(["'", LaunchConfiguration('model'), "'"])}]
     # )
     # ld.add_action(move_to_pose_node)
+
+    ############################################
+    # MOVE TO POSE SERVER
+    ############################################
+    # Launch move_to_pose server
+    move_to_pose_server = Node(
+        package='kuka_motion',
+        executable='move_to_pose_server',
+        name='move_to_pose_server',
+        output='screen',
+        parameters=[{'robot_name': PythonExpression(["'", LaunchConfiguration('model'), "'"])}]
+    )
+    ld.add_action(move_to_pose_server)
 
     return ld

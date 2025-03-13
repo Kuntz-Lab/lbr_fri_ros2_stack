@@ -15,6 +15,9 @@ from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import ReentrantCallbackGroup
 from enum import Enum
 from threading import Lock
+from rclpy.action import ActionServer, GoalResponse, CancelResponse
+from rclpy.action.server import ServerGoalHandle
+from kuka_interfaces.action import MoveToPose
 
 class NodeState(Enum):
     IDLE = 0
@@ -22,21 +25,14 @@ class NodeState(Enum):
     EXECUTING = 2
 
 
-class MoveToPoseNode(Node):
+class MoveToPoseServerNode(Node):
 
     ################# INITIALIZE NODE #################
 
-    def __init__(self, _sub_echo=False):
-        super().__init__('move_to_pose')
+    def __init__(self, robot_name='med14_tc', _sub_echo=False):
+        super().__init__('move_to_pose_server')
 
         ######### INITIALIZE PROGRAM VARIABLES #########
-
-        # Explicitly declare the parameter with a default value
-        self.declare_parameter('robot_name', 'med14_tc')
-        
-        # Get the parameter value
-        robot_name = self.get_parameter('robot_name').value
-        self.get_logger().info(f"robot_name: {robot_name}")
 
         # State management
         self.state = NodeState.IDLE
@@ -47,6 +43,7 @@ class MoveToPoseNode(Node):
         self.move_action_executing_ = False
         self.move_action_goal_handle_: ClientGoalHandle = None
         self.cb_group = ReentrantCallbackGroup()
+
 
         # set the flag for which robot we are using (important for what channels to subscribe to/publish to)
         self.robot_name = robot_name
@@ -64,14 +61,6 @@ class MoveToPoseNode(Node):
             self.ik_solver_name = '/lbr/compute_ik'
             self.ee_frame = 'lbr_tendon_robot_link'
             self.base_frame = 'lbr_link_1'
-        elif self.robot_name == 'med14_robotiq_2f':
-            self.joint_state_topic_name = '/lbr/joint_states'
-            self.move_action_name = '/lbr/move_action'
-            self.arm_joint_names = ['lbr_A1', 'lbr_A2', 'lbr_A3', 'lbr_A4', 'lbr_A5', 'lbr_A6', 'lbr_A7']
-            self.ik_solver_name = '/lbr/compute_ik'
-            self.ee_frame = 'lbr_robotiq_140_base_link'
-            self.base_frame = 'lbr_link_0'
-            self.get_logger().info('Robot name set to med14_robotiq_2f')
         else:
             self.get_logger().warn('No valid robot name specified in MoveToGoal() initialization, various topics/services/actions may not work!') 
             self.joint_state_topic_name = 'joint_states'
@@ -89,14 +78,14 @@ class MoveToPoseNode(Node):
         self.medbot_joint_state = JointState()
 
         ######### INITIALIZE ROS NODES #########
-        # Create desired pose subscriber
-        self.pose_sub = self.create_subscription(
-            PoseStamped,
-            '/lbr/move_to_pose/desired_pose',
-            self.pose_sub_callback,
-            10,
-            callback_group=self.cb_group
-        )
+        # # Create desired pose subscriber
+        # self.pose_sub = self.create_subscription(
+        #     PoseStamped,
+        #     '/lbr/move_to_pose/desired_pose',
+        #     self.pose_sub_callback,
+        #     10,
+        #     callback_group=self.cb_group
+        # )
 
         # create joint state subscriber
         self.joint_state_sub_ = self.create_subscription(
@@ -134,35 +123,92 @@ class MoveToPoseNode(Node):
             self.get_logger().info('MoveGroup services not available, waiting...')
         self.get_logger().info("MoveGroup services have been started")
 
+        # Add Action Server
+        self.pose_action_server = ActionServer(
+            self,
+            PoseStamped,
+            'pose_goal',
+            execute_callback=self.pose_execute_callback,
+            goal_callback=self.pose_goal_callback,
+            cancel_callback=self.pose_cancel_callback,
+            callback_group=self.cb_group
+        )
+        self.get_logger().info("Move to pose action server has been started")
+
     
     ################# DEFINE CALLBACKS #################
 
-    async def pose_sub_callback(self, msg):
-        """Non-blocking pose callback"""
-        
+    def pose_goal_callback(self, goal_request):
+        """Handle new goal request"""
         with self.state_lock:
             if self.state != NodeState.IDLE:
-                self.get_logger().warn("Node busy, rejecting new goal")
-                return
+                self.get_logger().warn("Node busy, rejecting goal")
+                return GoalResponse.REJECT
             self.state = NodeState.PLANNING
-        
+            return GoalResponse.ACCEPT
+
+    def pose_cancel_callback(self, goal_handle):
+        """Handle goal cancellation"""
+        self.get_logger().info("Received cancel request")
+        return CancelResponse.ACCEPT
+
+    async def pose_execute_callback(self, goal_handle: ServerGoalHandle):
+        """Execute goal asynchronously"""
         try:
+            # Get pose from goal
+            goal_pose = goal_handle.request
+
             # Request IK solution asynchronously
-            joint_positions = await self.convert_pose_to_joint_angles(msg)
+            joint_positions = await self.convert_pose_to_joint_angles(goal_pose)
             if not joint_positions:
-                raise Exception("No IK solution found")
-                
-            # Create and send goal
+                goal_handle.abort()
+                return MoveToPose.Result()
+
+            # Execute move
             success = await self.execute_move(joint_positions)
             if not success:
-                raise Exception("Move execution failed")
-                
+                goal_handle.abort()
+                return MoveToPose.Result()
+
+            # Return success
+            goal_handle.succeed()
+            return self.create_result()
+
         except Exception as e:
             self.get_logger().error(f"Move failed: {e}")
-            
+            goal_handle.abort()
+            return MoveToPose.Result()
+
         finally:
             with self.state_lock:
                 self.state = NodeState.IDLE
+
+    # async def pose_sub_callback(self, msg):
+    #     """Non-blocking pose callback"""
+        
+    #     with self.state_lock:
+    #         if self.state != NodeState.IDLE:
+    #             self.get_logger().warn("Node busy, rejecting new goal")
+    #             return
+    #         self.state = NodeState.PLANNING
+        
+    #     try:
+    #         # Request IK solution asynchronously
+    #         joint_positions = await self.convert_pose_to_joint_angles(msg)
+    #         if not joint_positions:
+    #             raise Exception("No IK solution found")
+                
+    #         # Create and send goal
+    #         success = await self.execute_move(joint_positions)
+    #         if not success:
+    #             raise Exception("Move execution failed")
+                
+    #     except Exception as e:
+    #         self.get_logger().error(f"Move failed: {e}")
+            
+    #     finally:
+    #         with self.state_lock:
+    #             self.state = NodeState.IDLE
 
     async def get_ik_solution(self, pose_msg):
         """Non-blocking IK service call"""
@@ -907,7 +953,7 @@ class MoveToPoseNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = MoveToPoseNode()
+    node = MoveToPoseServerNode()
     executor = MultiThreadedExecutor()
     executor.add_node(node)
     executor.spin()

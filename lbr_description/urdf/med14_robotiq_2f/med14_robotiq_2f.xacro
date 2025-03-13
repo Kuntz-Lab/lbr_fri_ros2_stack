@@ -47,14 +47,6 @@
         <origin xyz="0 0 0" rpy="0 0 ${pi/2}" />
     </xacro:robotiq_gripper>
 
-    <!-- Attach Robotiq gripper NO PREFIX-->
-    <!-- <xacro:robotiq_gripper 
-        name="RobotiqGripperHardwareInterface"
-        parent="$(arg robot_name)_robotiq_adapter_link"
-        use_fake_hardware="$(arg use_fake_hardware)">
-        <origin xyz="0 0 0" rpy="0 0 ${pi/2}" />
-    </xacro:robotiq_gripper> -->
-
     <!-- attach table to robot base -->
     <xacro:table_description 
         parent_link="$(arg robot_name)_link_0"
