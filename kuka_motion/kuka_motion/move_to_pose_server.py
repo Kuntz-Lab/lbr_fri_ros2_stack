@@ -159,7 +159,6 @@ class MoveToPoseServer(Node):
             )
         self.get_logger().info("M2P SRV: MoveToPose joint state subscriber has been started")
 
-
         # Dictionary to keep track of active target goal handle
         self._target_goal_handle = None
         
@@ -259,15 +258,16 @@ class MoveToPoseServer(Node):
                 self.get_logger().warn('M2P SRV: Rejecting goal: Another goal is already active')
                 return GoalResponse.REJECT
             else:
-                # # No active goal, check if there is a valid IK solution
-                # pose_msg = PoseStamped()
-                # pose_msg.header.frame_id = self.base_frame
-                # pose_msg.pose = goal_request.pose
-                # response = self.get_ik_solution(pose_msg)
-                # if response is None:
-                #     self.get_logger().warn('M2P SRV: Rejecting goal: No IK solution found')
-                #     return GoalResponse.REJECT
-                # else:
+                # No active goal, check if there is a valid IK solution
+                try:
+                    planning_group = goal_request.planning_group
+                except:
+                    planning_group = 'arm'
+                response = self.get_ik_solution(goal_request.desired_pose, planning_group)
+                if response is None:
+                    self.get_logger().warn('M2P SRV: Rejecting goal: No IK solution found')
+                    return GoalResponse.REJECT
+                else:
                     self.get_logger().info('M2P SRV: Accepting goal')
                     return GoalResponse.ACCEPT
 
@@ -306,9 +306,16 @@ class MoveToPoseServer(Node):
         wrapper_result = WrapperAction.Result()
         
         try:
-            # request IK solution
-            wrapper_goal_pse = goal_handle.request.desired_pose
-            ik_response = await self.get_ik_solution(wrapper_goal_pse)
+            # extract the goal pose from the goal handle
+            wrapper_goal_pose = goal_handle.request.desired_pose
+            # get planning group
+            try:
+                planning_group = goal_handle.request.planning_group
+            except:
+                planning_group = 'arm'
+
+            # Get IK solution for the goal pose
+            ik_response = await self.get_ik_solution(wrapper_goal_pose)
             if ik_response is None:
                 self.get_logger().warn('M2P SRV: No IK solution found')
                 goal_handle.abort()
@@ -337,12 +344,6 @@ class MoveToPoseServer(Node):
                 acc_scaling = clamp(acc_scaling, 0.0, 1.0)
             except:
                 acc_scaling = 0.1
-
-            # get planning group
-            try:
-                planning_group = goal_handle.request.planning_group
-            except:
-                planning_group = 'arm'
 
             # Map ik_response and planning params to target_goal
             target_goal = self.create_move_group_goal(ik_response, planning_group, vel_scaling, acc_scaling)
