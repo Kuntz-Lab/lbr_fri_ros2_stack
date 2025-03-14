@@ -18,6 +18,11 @@ def generate_launch_description() -> LaunchDescription:
     ############################################
     # MOCK LAUNCH
     ############################################
+    # If the model is med14_robotiq_2f, use the combined controllers cfg file, otherwise use the default
+    ctrl_cfg = PythonExpression([
+        "'ros2_control/combined_controllers.yaml' if '", model, "' == 'med14_robotiq_2f' else 'ros2_control/lbr_controllers.yaml'"
+    ])    
+
     # Include mock.launch.py conditionally
     mock_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
@@ -30,7 +35,7 @@ def generate_launch_description() -> LaunchDescription:
         launch_arguments={
             'model': model,
             'ctrl_cfg_pkg': 'lbr_description',
-            'ctrl_cfg': 'ros2_control/combined_controllers.yaml'  # Use combined controllers
+            'ctrl_cfg': ctrl_cfg #'ros2_control/combined_controllers.yaml'  # Use combined controllers
         }.items()
         ,
         condition=IfCondition(
@@ -41,6 +46,9 @@ def generate_launch_description() -> LaunchDescription:
     )
     ld.add_action(mock_launch)
 
+    ############################################
+    # GRIPPER CONTROLLER SPAWNER
+    ############################################
     robotiq_gripper_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
@@ -58,33 +66,6 @@ def generate_launch_description() -> LaunchDescription:
         condition=IfCondition(PythonExpression(["'", model, "' == 'med14_robotiq_2f'"]))
     )
     ld.add_action(robotiq_activation_controller_spawner)
-
-    # ############################################
-    # # HARDWARE LAUNCH
-    # ############################################
-    # # Include hardware.launch.py conditionally
-    # hardware_launch = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource([
-    #         PathJoinSubstitution([
-    #             FindPackageShare('lbr_bringup'),
-    #             'launch',
-    #             'hardware.launch.py'
-    #         ])
-    #     ]),
-    #     launch_arguments={
-    #         'model': model,
-    #         'ctrl_cfg_pkg': 'lbr_description',
-    #         'ctrl_cfg': 'ros2_control/combined_controllers.yaml',  # Use combined controllers
-    #         'use_fake_hardware': 'false'
-    #     }.items()
-    #     ,
-    #     condition=IfCondition(
-    #         PythonExpression([
-    #             "'", mode, "' == 'hardware'"
-    #         ])
-    #     )
-    # )
-    # ld.add_action(hardware_launch)
 
     # ############################################
     # # RVIZ

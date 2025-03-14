@@ -33,27 +33,8 @@ class MoveToPoseServer(Node):
         self.declare_parameter('robot_name', 'med14_tc')
         self.robot_name = self.get_parameter('robot_name').value
 
-        self.planning_gropus = ['arm', 'gripper']
-
         self.joint_state_topic_name = 'lbr/joint_states'
         self.move_action_name = '/lbr/move_action'
-        self.joint_names = {
-            'arm': ['lbr_A1', 'lbr_A2', 'lbr_A3', 'lbr_A4', 'lbr_A5', 'lbr_A6', 'lbr_A7'],
-            'gripper': ['lbr_finger_joint'],
-            'all': ['lbr_left_inner_finger_joint',
-                      'lbr_right_inner_knuckle_joint',
-                      'lbr_right_outer_knuckle_joint',
-                      'lbr_right_inner_finger_joint',
-                      'lbr_left_inner_knuckle_joint',
-                      'lbr_A2',
-                      'lbr_A3',
-                      'lbr_A4',
-                      'lbr_A6',
-                      'lbr_finger_joint',
-                      'lbr_A1',
-                      'lbr_A5',
-                      'lbr_A7']
-            }
         self.ws_bounds = (Vector3(x=-1.0,y=-1.0,z=-1.0), Vector3(x=1.0,y=1.0,z=1.0))
         self.ik_solver_name = '/lbr/compute_ik'
 
@@ -63,17 +44,45 @@ class MoveToPoseServer(Node):
             self.get_logger().info('M2P SRV: Robot name set to "med14"')
 
         elif self.robot_name == 'med14_tc':
+            self.planning_gropus = ['arm']
+            self.joint_names = {
+                'arm': ['lbr_A1', 'lbr_A2', 'lbr_A3', 'lbr_A4', 'lbr_A5', 'lbr_A6', 'lbr_A7'],
+                'all': ['lbr_A1', 'lbr_A2', 'lbr_A3', 'lbr_A4', 'lbr_A5', 'lbr_A6', 'lbr_A7']
+                }
             self.ee_frame = 'lbr_tendon_robot_link'
-            self.base_frame = 'lbr_link_1'
+            self.base_frame = 'lbr_link_0'
             self.get_logger().info('M2P SRV: Robot name set to "med14_tc"')
 
         elif self.robot_name == 'med14_robotiq_2f':
+            self.planning_gropus = ['arm', 'gripper']
+            self.joint_names = {
+                'arm': ['lbr_A1', 'lbr_A2', 'lbr_A3', 'lbr_A4', 'lbr_A5', 'lbr_A6', 'lbr_A7'],
+                'gripper': ['lbr_finger_joint'],
+                'all': ['lbr_left_inner_finger_joint',
+                        'lbr_right_inner_knuckle_joint',
+                        'lbr_right_outer_knuckle_joint',
+                        'lbr_right_inner_finger_joint',
+                        'lbr_left_inner_knuckle_joint',
+                        'lbr_A2',
+                        'lbr_A3',
+                        'lbr_A4',
+                        'lbr_A6',
+                        'lbr_finger_joint',
+                        'lbr_A1',
+                        'lbr_A5',
+                        'lbr_A7']
+                }
             self.ee_frame = 'lbr_robotiq_140_base_link'
             self.base_frame = 'lbr_floating_link'
             self.get_logger().info('M2P SRV: Robot name set to "med14_robotiq_2f"')
 
         else:
             self.get_logger().warn('M2P SRV: No valid robot name specified in MoveToGoal() initialization, various topics/services/actions may not work!') 
+            self.planning_gropus = ['arm']
+            self.joint_names = {
+                'arm': ['lbr_A1', 'lbr_A2', 'lbr_A3', 'lbr_A4', 'lbr_A5', 'lbr_A6', 'lbr_A7'],
+                'all': ['lbr_A1', 'lbr_A2', 'lbr_A3', 'lbr_A4', 'lbr_A5', 'lbr_A6', 'lbr_A7']
+                }
             self.joint_state_topic_name = '/joint_states'
             self.ee_frame = 'lbr_link_7'
             self.base_frame = 'lbr_link_1'

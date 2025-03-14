@@ -102,16 +102,16 @@ def main(args=None):
     
     # Example end-effector pose
     goal_pos = Vector3()
-    goal_pos.x = 0.3
-    goal_pos.y = 0.4
-    goal_pos.z = 1.0
+    goal_pos.x = 0.0
+    goal_pos.y = 0.0
+    goal_pos.z = 1.3
 
     goal_rpy = Vector3()
     goal_rpy.x = 0.0
-    goal_rpy.y = -0.57
+    goal_rpy.y = 0.0
     goal_rpy.z = 0.0
 
-    node.send_goal(goal_pos, goal_rpy, "arm", 0.5, 0.5)
+    node.send_goal(goal_pos, goal_rpy, "arm", 0.1, 0.1)
     rclpy.spin(node)
     rclpy.shutdown()
     
