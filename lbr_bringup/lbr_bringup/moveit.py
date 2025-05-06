@@ -51,6 +51,23 @@ class LBRMoveGroupMixin:
             default_value="false",
             description="Whether to copy robot dynamics into MoveGroup.",
         )
+    
+    # add pointcloud moveit arguements
+    @staticmethod
+    def arg_sensors_3d() -> DeclareLaunchArgument:
+        return DeclareLaunchArgument(
+            'sensors_3d',
+            default_value='false',
+            description='Whether to use 3D sensors for collision detection'
+        )
+
+    @staticmethod
+    def arg_sensors_3d_config() -> DeclareLaunchArgument:
+        return DeclareLaunchArgument(
+            'sensors_3d_config',
+            default_value='',
+            description='Path to the 3D sensor configuration file'
+        )
 
     @staticmethod
     def moveit_configs_builder(
@@ -101,6 +118,11 @@ class LBRMoveGroupMixin:
                 "publish_monitored_planning_scene"
             ),
             "monitor_dynamics": False,
+
+            # Added for 3D sensors
+            "octomap_resolution": 0.025,
+            "octomap_frame": "world",
+            "max_range": 5.0,
         }
         return move_group_configuration
 

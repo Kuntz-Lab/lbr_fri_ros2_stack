@@ -167,5 +167,10 @@
     <disable_collisions link1="lbr_right_outer_knuckle" link2="lbr_left_inner_finger_pad" reason="Never"/>
     <disable_collisions link1="lbr_left_outer_finger" link2="lbr_right_inner_finger_pad" reason="Never"/>
     <disable_collisions link1="lbr_right_outer_finger" link2="lbr_left_inner_finger_pad" reason="Never"/>
+    <disable_collisions link1="lbr_left_inner_finger_pad" link2="lbr_right_inner_finger" reason="Never"/>
+    <disable_collisions link1="lbr_left_inner_finger_pad" link2="lbr_right_inner_knuckle" reason="Never"/>
+    <disable_collisions link1="lbr_right_inner_finger_pad" link2="lbr_left_inner_knuckle" reason="Never"/>
+    <disable_collisions lonk1="lbr_right_inner_finger_pad" link2="lbr_left_inner_finger" reason="Never"/>
+    <disable_collisions link1="lbr_left_inner_finger" link2="lbr_right_inner_finger_pad" reason="Never"/>
 
 </robot>

@@ -1,0 +1,13 @@
+# Goal: desired pose
+float32 vel_scaling
+float32 acc_scaling
+string planning_group
+---
+# Result: pose reached
+geometry_msgs/PoseStamped reached_pose
+bool success
+string message
+---
+# Feedback: current pose and planning state
+geometry_msgs/PoseStamped current_pose
+string state

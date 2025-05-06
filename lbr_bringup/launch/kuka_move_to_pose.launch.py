@@ -1,5 +1,5 @@
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, OpaqueFunction
+from launch.actions import IncludeLaunchDescription, OpaqueFunction, DeclareLaunchArgument
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, PythonExpression
@@ -11,9 +11,46 @@ def generate_launch_description() -> LaunchDescription:
     ld = LaunchDescription()
 
     # Launch Arguments
-    model = LaunchConfiguration('model', default='med14_tc')
-    rviz = LaunchConfiguration('rviz', default='true')
-    mode = LaunchConfiguration('mode', default='mock')
+    model_arg = DeclareLaunchArgument(
+        'model',
+        default_value='med14_tc',
+        description='Robot model to use'
+    )
+    ld.add_action(model_arg)
+    model = LaunchConfiguration('model')
+
+    rviz_arg = DeclareLaunchArgument(
+        'rviz',
+        default_value='true',
+        description='Whether to start RViz'
+    )
+    ld.add_action(rviz_arg)
+    rviz = LaunchConfiguration('rviz')
+
+    mode_arg = DeclareLaunchArgument(
+        'mode',
+        default_value='mock',
+        description='Robot operation mode: mock, real'
+    )
+    ld.add_action(mode_arg)
+    mode = LaunchConfiguration('mode')
+
+    # pointcloud moveit arguements
+    sensors_3d_arg = DeclareLaunchArgument(
+        'sensors_3d',
+        default_value='false',
+        description='Whether to use 3D sensors for collision detection'
+    )
+    ld.add_action(sensors_3d_arg)
+    sensors_3d = LaunchConfiguration('sensors_3d')
+
+    sensors_3d_config_arg = DeclareLaunchArgument(
+        'sensors_3d_config',
+        default_value='',
+        description='Path to the 3D sensor configuration file'
+    )
+    ld.add_action(sensors_3d_config_arg)    
+    sensors_3d_config = LaunchConfiguration('sensors_3d_config')
 
     ############################################
     # MOCK LAUNCH
@@ -67,24 +104,6 @@ def generate_launch_description() -> LaunchDescription:
     )
     ld.add_action(robotiq_activation_controller_spawner)
 
-    # ############################################
-    # # RVIZ
-    # ############################################
-    # # Include RViz if rviz is true
-    # rviz_launch = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource([
-    #         PathJoinSubstitution([
-    #             FindPackageShare('lbr_bringup'),
-    #             'launch',
-    #             'rviz.launch.py'
-    #         ])
-    #     ]),
-    #     launch_arguments={
-    #         'model': model
-    #     }.items()
-    # )
-    # ld.add_action(rviz_launch)
-
     ############################################
     # MOVE-IT
     ############################################
@@ -100,23 +119,12 @@ def generate_launch_description() -> LaunchDescription:
         launch_arguments={
             'mode': mode,
             'rviz': rviz,
-            'model': model
+            'model': model,
+            'sensors_3d': sensors_3d,
+            'sensors_3d_config': sensors_3d_config
         }.items()
     )
     ld.add_action(move_group_launch)
-    
-    ############################################
-    # MOVE TO POSE SUBSCRIPTION
-    ############################################
-    # # Launch move_to_pose node
-    # move_to_pose_node = Node(
-    #     package='kuka_motion',
-    #     executable='move_to_pose',
-    #     name='move_to_pose',
-    #     output='screen',
-    #     parameters=[{'robot_name': PythonExpression(["'", LaunchConfiguration('model'), "'"])}]
-    # )
-    # ld.add_action(move_to_pose_node)
 
     ############################################
     # MOVE TO POSE SERVER
@@ -130,5 +138,18 @@ def generate_launch_description() -> LaunchDescription:
         parameters=[{'robot_name': PythonExpression(["'", LaunchConfiguration('model'), "'"])}]
     )
     ld.add_action(move_to_pose_server)
+
+    ############################################
+    # MOVE HOME SERVER
+    ############################################
+    # Launch move_home server
+    move_home_server = Node(
+        package='kuka_motion',
+        executable='move_home_server',
+        name='move_home_server',
+        output='screen',
+        parameters=[{'robot_name': PythonExpression(["'", LaunchConfiguration('model'), "'"])}]
+    )
+    ld.add_action(move_home_server)
 
     return ld
