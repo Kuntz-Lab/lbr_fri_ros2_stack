@@ -6,6 +6,7 @@ from launch.substitutions import (
     FindExecutable,
     LaunchConfiguration,
     PathJoinSubstitution,
+    PythonExpression,
 )
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -56,6 +57,23 @@ class LBRDescriptionMixin:
                     mode,
                     " system_config_path:=",
                     system_config_path,
+                    # if mode is not mock add the com_port and use_fake_hardware args
+                    " use_fake_hardware:=",
+                    PythonExpression(
+                        [
+                            "True if '",
+                            mode,
+                            "' == 'mock' else 'False'",
+                        ]
+                    ),
+                    " com_port:=",
+                    PythonExpression(
+                        [
+                            "'/dev/ttyUSB1' if '",
+                            mode,
+                            "' == 'hardware' else '/dev/null'",
+                        ]
+                    ),
                 ]
             )
         }
