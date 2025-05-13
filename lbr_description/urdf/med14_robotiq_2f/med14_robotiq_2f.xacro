@@ -17,6 +17,7 @@
         name="system_config_path"
         default="$(find lbr_description)/ros2_control/lbr_system_config.yaml" />
     <xacro:arg name="use_fake_hardware" default="true" />
+    <xacro:arg name="com_port" default="/dev/ttyUSB1" />
 
     <!-- KDL requires a link without inertia -->
     <link name="$(arg robot_name)_floating_link" />
@@ -43,7 +44,8 @@
         name="RobotiqGripperHardwareInterface"
         prefix="$(arg robot_name)_"
         parent="$(arg robot_name)_robotiq_adapter_link"
-        use_fake_hardware="$(arg use_fake_hardware)">
+        use_fake_hardware="$(arg use_fake_hardware)"
+        com_port="$(arg com_port)">
         <origin xyz="0 0 0" rpy="0 0 ${pi/2}" />
     </xacro:robotiq_gripper>
 
