@@ -36,7 +36,10 @@ class LBRDescriptionMixin:
                 ),
             ]
         ),
+        com_port: Optional[Union[LaunchConfiguration, str]] = "/dev/ttyUSB1",
+        use_fake_hardware: Optional[Union[LaunchConfiguration, bool]] = True,
     ) -> Dict[str, str]:
+
         robot_description = {
             "robot_description": Command(
                 [
@@ -57,24 +60,12 @@ class LBRDescriptionMixin:
                     mode,
                     " system_config_path:=",
                     system_config_path,
-                    # if mode is not mock add the com_port and use_fake_hardware args
-                    " use_fake_hardware:=",
-                    PythonExpression(
-                        [
-                            "True if '",
-                            mode,
-                            "' == 'mock' else 'False'",
-                        ]
-                    ),
+                    # add the com_port and use_fake_hardware arguments, xacro will ignore them if not needed
                     " com_port:=",
-                    PythonExpression(
-                        [
-                            "'/dev/ttyUSB1' if '",
-                            mode,
-                            "' == 'hardware' else '/dev/null'",
-                        ]
-                    ),
-                ]
+                    com_port,
+                    " use_fake_hardware:=",
+                    use_fake_hardware,
+                ] 
             )
         }
         return robot_description
