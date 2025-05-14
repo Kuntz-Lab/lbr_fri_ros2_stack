@@ -87,24 +87,17 @@ def generate_launch_description() -> LaunchDescription:
         condition=IfCondition(PythonExpression(["'", model, "' == 'med14_robotiq_2f'"]))
     )
 
-    # Create the basic list of controllers without gripper controllers
-    on_start_controllers = [
-        joint_state_broadcaster,
-        force_torque_broadcaster,
-        lbr_state_broadcaster,
-        controller,
-    ]
-
-    # Use a function to conditionally add the gripper controllers
-    def add_gripper_controllers(context):
-        if context.launch_configurations['model'] == 'med14_robotiq_2f':
-            return on_start_controllers + [robotiq_gripper_controller_spawner, robotiq_activation_controller_spawner]
-        return on_start_controllers
-
     controller_event_handler = RegisterEventHandler(
         OnProcessStart(
             target_action=ros2_control_node,
-            on_start=add_gripper_controllers,
+            on_start=[
+                joint_state_broadcaster,
+                force_torque_broadcaster,
+                lbr_state_broadcaster,
+                controller,
+                robotiq_gripper_controller_spawner,
+                robotiq_activation_controller_spawner,
+            ],
         )
     )
     ld.add_action(controller_event_handler)
