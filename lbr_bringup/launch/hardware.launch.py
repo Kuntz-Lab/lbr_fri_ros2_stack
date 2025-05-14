@@ -20,16 +20,6 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(LBRROS2ControlMixin.arg_ctrl_cfg())
     ld.add_action(LBRROS2ControlMixin.arg_ctrl())
 
-    # Add COM port argument for the gripper
-    com_port_arg = DeclareLaunchArgument(
-        'com_port',
-        default_value='/dev/ttyUSB1',
-        description='Serial port for the Robotiq gripper'
-    )
-    ld.add_action(com_port_arg)
-    com_port = LaunchConfiguration('com_port')
-    model = LaunchConfiguration('model')
-
     # static transform world -> <robot_name>_floating_link
     ld.add_action(
         LBRDescriptionMixin.node_static_tf(
@@ -42,7 +32,7 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     # robot description
-    robot_description = LBRDescriptionMixin.param_robot_description(mode="hardware",model=model,com_port=com_port)
+    robot_description = LBRDescriptionMixin.param_robot_description(mode="hardware")
 
     # robot state publisher
     robot_state_publisher = LBRROS2ControlMixin.node_robot_state_publisher(
@@ -70,23 +60,6 @@ def generate_launch_description() -> LaunchDescription:
         controller=LaunchConfiguration("ctrl")
     )
 
-    # Add the gripper controller spawners
-    robotiq_gripper_controller_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['robotiq_gripper_controller', '--controller-manager', 'controller_manager'],
-        namespace=LaunchConfiguration('robot_name'),
-        condition=IfCondition(PythonExpression(["'", model, "' == 'med14_robotiq_2f'"]))
-    )
-    
-    robotiq_activation_controller_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['robotiq_activation_controller', '--controller-manager', 'controller_manager'],
-        namespace=LaunchConfiguration('robot_name'),
-        condition=IfCondition(PythonExpression(["'", model, "' == 'med14_robotiq_2f'"]))
-    )
-
     controller_event_handler = RegisterEventHandler(
         OnProcessStart(
             target_action=ros2_control_node,
@@ -95,8 +68,6 @@ def generate_launch_description() -> LaunchDescription:
                 force_torque_broadcaster,
                 lbr_state_broadcaster,
                 controller,
-                robotiq_gripper_controller_spawner,
-                robotiq_activation_controller_spawner,
             ],
         )
     )
