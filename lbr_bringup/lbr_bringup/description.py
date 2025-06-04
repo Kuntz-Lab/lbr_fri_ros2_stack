@@ -64,7 +64,7 @@ class LBRDescriptionMixin:
                     " com_port:=",
                     com_port,
                     " use_fake_hardware:=",
-                    str(use_fake_hardware).lower() if isinstance(use_fake_hardware, bool) else use_fake_hardware,
+                    use_fake_hardware,
                 ] 
             )
         }

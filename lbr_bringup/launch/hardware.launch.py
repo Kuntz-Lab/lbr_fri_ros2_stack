@@ -20,6 +20,22 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(LBRROS2ControlMixin.arg_ctrl_cfg())
     ld.add_action(LBRROS2ControlMixin.arg_ctrl())
 
+    # add com_port launch argument
+    ld.add_action(
+        DeclareLaunchArgument(
+            name="com_port",
+            default_value="/dev/ttyUSB1",
+            description="Serial port for the robotiq gripper",
+        )
+    )
+    ld.add_action(
+        DeclareLaunchArgument(
+            name="use_fake_hardware",
+            default_value="false",
+            description="Whether to use fake hardware for the gripper",
+        )
+    )
+    
     # static transform world -> <robot_name>_floating_link
     ld.add_action(
         LBRDescriptionMixin.node_static_tf(
@@ -32,7 +48,11 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     # robot description
-    robot_description = LBRDescriptionMixin.param_robot_description(mode="hardware")
+    robot_description = LBRDescriptionMixin.param_robot_description(
+        mode="hardware",
+        use_fake_hardware=LaunchConfiguration("use_fake_hardware"),
+        com_port=LaunchConfiguration("com_port"),
+        )
 
     # robot state publisher
     robot_state_publisher = LBRROS2ControlMixin.node_robot_state_publisher(

@@ -41,7 +41,6 @@
     # Robotiq gripper controllers
     robotiq_gripper_controller:
       type: position_controllers/GripperActionController
-      
     robotiq_activation_controller:
       type: robotiq_controllers/RobotiqActivationController
 
@@ -133,14 +132,13 @@
 # Robotiq gripper controller configurations
 /**/robotiq_gripper_controller:
   ros__parameters:
+    default: true
     joint: lbr_finger_joint
-    action_name: gripper_cmd
-    goal_tolerance: 0.01
-    max_effort: 10.0
+    # action_name: gripper_cmd
     use_effort_interface: true
     use_speed_interface: true
-    default: true
-# robotiq_gripper_controller:
+    max_velocity: 0.1  # Set the maximum velocity here
+# # robotiq_gripper_controller:
 #   ros__parameters:
 #     default: true
 #     joint: finger_joint

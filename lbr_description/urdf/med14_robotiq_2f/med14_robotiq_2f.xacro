@@ -17,6 +17,7 @@
         name="system_config_path"
         default="$(find lbr_description)/ros2_control/lbr_system_config.yaml" />
     <xacro:arg name="use_fake_hardware" default="true" />
+    <!-- <xacro:arg name="use_fake_hardware" default="false" /> -->
     <xacro:arg name="com_port" default="/dev/ttyUSB1" />
 
     <!-- KDL requires a link without inertia -->
