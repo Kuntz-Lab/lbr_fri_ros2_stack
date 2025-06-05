@@ -102,6 +102,18 @@ Now, run the [demos](https://lbr-stack.readthedocs.io/en/latest/lbr_fri_ros2_sta
     ```
     on the robot PC (which is connected to the KUKA controller and the Robotiq controller and is running a realtime/low-latency kernel).
 
+    These launch files launch the robot description with the gripper attached to the end of the robot, the MoveIt services, and the controllers for the robot and gripper (either in sim or on hardware depending on which mode you chose).
+
+8. Custom nodes can be found in the kuka_motion package. These nodes include:
+    - joint_servo_pub: which publishes joint servoing commands to "jog" the robot joints
+    - move_home_client: which publishes a request to send the robot to the home position
+    - move_home_server: which is a wrapper aroung MoveIt that commands the robot to move to the home position (all joint angles are 0)
+    - move_to_pose_client: which is a server that sends a request to move the robot to a specific end-effector pose
+    - move_top_pose_server: which is a wrapper around MoveIt that takes the end-effector pose request, finds an IK solution, and then senda a planning request to MoveIt to command the robot to that IK solution
+    - pose_pub: which publishes poses
+    - tf_tree_sub: which subscribes to the tf tree
+    - twist_servo_pub: which publishes a twist servo command to the robot, requesting that the end-effector pose be jogged by that amount. This is done in a collision free way using MoveIt
+
 ## Citation
 If you enjoyed using this repository for your work, we would really appreciate ❤️ if you could leave a ⭐ and / or cite it, as it helps us to continue offering support.
 
