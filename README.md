@@ -100,7 +100,7 @@ Now, run the [demos](https://lbr-stack.readthedocs.io/en/latest/lbr_fri_ros2_sta
     ```shell
     ros2 launch lbr_bringup kuka_and_robotiq_hardware.launch.py
     ```
-    on the robot PC (which is connected to the KUKA controller and the Ron\botiq controller and is running a realtime/low-latency kernel).
+    on the robot PC (which is connected to the KUKA controller and the Robotiq controller and is running a realtime/low-latency kernel).
 
 ## Citation
 If you enjoyed using this repository for your work, we would really appreciate ❤️ if you could leave a ⭐ and / or cite it, as it helps us to continue offering support.
