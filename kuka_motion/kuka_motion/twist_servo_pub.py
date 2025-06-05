@@ -16,7 +16,7 @@ class TwistServoPublisher(Node): # MODIFY NAME
         )
 
         self.pub_timer_ = self.create_timer(
-            0.25,
+            0.01,  # 100 Hz
             self.publish_twist_jog
         )
     
@@ -28,9 +28,9 @@ class TwistServoPublisher(Node): # MODIFY NAME
         header_msg.frame_id = "lbr_link_ee"
 
         msg.header = header_msg
-        msg.twist.linear.x = 0.50
-        msg.twist.linear.y = 0.50
-        msg.twist.linear.z = 0.0
+        msg.twist.linear.x = -0.05
+        msg.twist.linear.y = -0.05
+        msg.twist.linear.z = 0.5
         msg.twist.angular.x = 0.0
         msg.twist.angular.y = 0.0
         msg.twist.angular.z = 0.0

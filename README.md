@@ -112,7 +112,44 @@ Now, run the [demos](https://lbr-stack.readthedocs.io/en/latest/lbr_fri_ros2_sta
     - move_top_pose_server: which is a wrapper around MoveIt that takes the end-effector pose request, finds an IK solution, and then senda a planning request to MoveIt to command the robot to that IK solution
     - pose_pub: which publishes poses
     - tf_tree_sub: which subscribes to the tf tree
-    - twist_servo_pub: which publishes a twist servo command to the robot, requesting that the end-effector pose be jogged by that amount. This is done in a collision free way using MoveIt
+    - twist_servo_pub: which publishes a twist servo command to the robot, requesting that the end-effector pose be jogged by that amount. This is done in a collision free way using MoveIt.
+
+> [!TIP]
+> The twist_servo_pub does not work when the robot is close to a singularity so using the joint_servo_pub to get the robot away from a singularity can fix this issue.
+
+9. To do joint servoing or end-effector twist servoing the robot needs to be using the forward position controller. This requires a different setup from running the move_to_pose server which requires the robot to be using the position controller. As long as there is a topic being published on either the joint servo or twist servo topics, the robot will jog. Once the topic stops publishing the robot stops moving. Launch twist servoing in simulation via:
+    
+    ```shell
+    ros2 launch lbr_bringup kuka_servoing.launch.py
+    ```
+
+    ```shell
+    ros2 run kuka_motion twist_servo_pub
+    ```
+    or
+    ```shell
+    ros2 run kuka_motion joint_servo_pub
+    ```
+
+    For hardware:
+
+    ```shell
+    ros2 launch lbr_bringup kuka_and_robotiq_hardware.launch.py ctrl:='forward_position_controller'
+    ```
+    
+    ```shell
+    ros2 launch lbr_bringup kuka_servoing.launch.py mode:=hardware
+    ```
+
+    ```shell
+    ros2 run kuka_motion twist_servo_pub
+    ```
+    or
+    ```shell
+    ros2 run kuka_motion joint_servo_pub
+    ```
+
+
 
 ## Citation
 If you enjoyed using this repository for your work, we would really appreciate ❤️ if you could leave a ⭐ and / or cite it, as it helps us to continue offering support.
