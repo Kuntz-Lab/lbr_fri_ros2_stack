@@ -30,7 +30,7 @@ def generate_launch_description() -> LaunchDescription:
     mode_arg = DeclareLaunchArgument(
         'mode',
         default_value='mock',
-        description='Robot operation mode: mock, real'
+        description='Robot operation mode: mock, hardware'
     )
     ld.add_action(mode_arg)
     mode = LaunchConfiguration('mode')
@@ -60,7 +60,8 @@ def generate_launch_description() -> LaunchDescription:
         "'ros2_control/combined_controllers.yaml' if '", model, "' == 'med14_robotiq_2f' else 'ros2_control/lbr_controllers.yaml'"
     ])    
 
-    # Include mock.launch.py conditionally
+    # Include mock.launch.py to launch the robot description and sim robot controllers conditionally.
+    # This is done with the hardware launch file on the robot pc if the harware mode is being used.
     mock_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
@@ -72,7 +73,8 @@ def generate_launch_description() -> LaunchDescription:
         launch_arguments={
             'model': model,
             'ctrl_cfg_pkg': 'lbr_description',
-            'ctrl_cfg': ctrl_cfg #'ros2_control/combined_controllers.yaml'  # Use combined controllers
+            'ctrl_cfg': ctrl_cfg, #'ros2_control/combined_controllers.yaml'  # Use combined controllers
+            'use_fake_hardware': 'true'  # IMPORTANT: Use fake hardware for mock mode
         }.items()
         ,
         condition=IfCondition(
@@ -91,7 +93,12 @@ def generate_launch_description() -> LaunchDescription:
         executable='spawner',
         arguments=['robotiq_gripper_controller', '--controller-manager', 'controller_manager'],
         namespace='lbr',
-        condition=IfCondition(PythonExpression(["'", model, "' == 'med14_robotiq_2f'"]))
+        # condition=IfCondition(PythonExpression([
+        #     "'true' if ('", model, "' == 'med14_robotiq_2f') and ('", mode, "' == 'gazebo' or '", mode, "' == 'mock') else 'false'"
+        # ]))
+        # condition=IfCondition(PythonExpression(["'true' if '", model, "' == 'med14_robotiq_2f' else 'false'"]))
+        # condition=IfCondition(PythonExpression(["'", model, "' == 'med14_robotiq_2f'"]))
+        condition=IfCondition(PythonExpression(["('", model, "' == 'med14_robotiq_2f') and (('", mode, "' == 'gazebo') or ('", mode, "' == 'mock'))"]))
     )
     ld.add_action(robotiq_gripper_controller_spawner)
                 
@@ -100,7 +107,13 @@ def generate_launch_description() -> LaunchDescription:
         executable='spawner',
         arguments=['robotiq_activation_controller', '--controller-manager', 'controller_manager'],
         namespace='lbr',
-        condition=IfCondition(PythonExpression(["'", model, "' == 'med14_robotiq_2f'"]))
+        # condition=IfCondition(PythonExpression([
+        #     "'true' if ('", model, "' == 'med14_robotiq_2f') and ('", mode, "' == 'gazebo' or '", mode, "' == 'mock') else 'false'"
+        # ]))
+        condition=IfCondition(PythonExpression(["('", model, "' == 'med14_robotiq_2f') and (('", mode, "' == 'gazebo') or ('", mode, "' == 'mock'))"]))
+        # condition=IfCondition(PythonExpression(["'", model, "' == 'med14_robotiq_2f'"]))
+        # condition=IfCondition(PythonExpression(["'true' if '", model, "' == 'med14_robotiq_2f' else 'false'"]))
+
     )
     ld.add_action(robotiq_activation_controller_spawner)
 
@@ -135,7 +148,7 @@ def generate_launch_description() -> LaunchDescription:
         executable='move_to_pose_server',
         name='move_to_pose_server',
         output='screen',
-        parameters=[{'robot_name': PythonExpression(["'", LaunchConfiguration('model'), "'"])}]
+        parameters=[{'robot_name': PythonExpression(["'", model, "'"])}]
     )
     ld.add_action(move_to_pose_server)
 
@@ -148,7 +161,7 @@ def generate_launch_description() -> LaunchDescription:
         executable='move_home_server',
         name='move_home_server',
         output='screen',
-        parameters=[{'robot_name': PythonExpression(["'", LaunchConfiguration('model'), "'"])}]
+        parameters=[{'robot_name': PythonExpression(["'", model, "'"])}]
     )
     ld.add_action(move_home_server)
 

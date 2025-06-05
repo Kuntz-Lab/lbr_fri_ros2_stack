@@ -84,6 +84,24 @@ Full documentation available on [Read the Docs](https://lbr-stack.readthedocs.io
 
 Now, run the [demos](https://lbr-stack.readthedocs.io/en/latest/lbr_fri_ros2_stack/lbr_demos/doc/lbr_demos.html). To get started with the real robot, checkout the [Hardware Setup](https://lbr-stack.readthedocs.io/en/latest/lbr_fri_ros2_stack/lbr_fri_ros2_stack/doc/hardware_setup.html).
 
+
+6. The custom move_to_pose nodes can be launched in simulation mode via
+
+    ```shell
+    ros2 launch lbr_bringup kuka_move_to_pose.launch.py model:=med14_robotiq_2f
+    ```
+
+7. The move_to_pose nodes can be launched in hardware mode via 
+
+    ```shell
+    ros2 launch lbr_bringup kuka_move_to_pose.launch.py mode:=hardware model:=med14_robotiq_2f
+    ```
+    on the Peception PC (which doesn't have a realtime kernel) and 
+    ```shell
+    ros2 launch lbr_bringup kuka_and_robotiq_hardware.launch.py
+    ```
+    on the robot PC (which is connected to the KUKA controller and the Ron\botiq controller and is running a realtime/low-latency kernel).
+
 ## Citation
 If you enjoyed using this repository for your work, we would really appreciate ❤️ if you could leave a ⭐ and / or cite it, as it helps us to continue offering support.
 

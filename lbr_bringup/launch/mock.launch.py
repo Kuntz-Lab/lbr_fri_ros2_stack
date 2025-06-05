@@ -28,7 +28,10 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     # robot description
-    robot_description = LBRDescriptionMixin.param_robot_description(mode="mock")
+    robot_description = LBRDescriptionMixin.param_robot_description(
+        mode="mock",
+        use_fake_hardware="true"
+        )
 
     # robot state publisher
     robot_state_publisher = LBRROS2ControlMixin.node_robot_state_publisher(
@@ -60,4 +63,8 @@ def generate_launch_description() -> LaunchDescription:
         )
     )
     ld.add_action(controller_event_handler)
+
+
+
+
     return ld
