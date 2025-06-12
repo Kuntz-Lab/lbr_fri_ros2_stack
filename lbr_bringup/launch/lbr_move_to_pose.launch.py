@@ -144,7 +144,7 @@ def generate_launch_description() -> LaunchDescription:
     ############################################
     # Launch move_to_pose server
     move_to_pose_server = Node(
-        package='kuka_motion',
+        package='lbr_motion',
         executable='move_to_pose_server',
         name='move_to_pose_server',
         output='screen',
@@ -157,7 +157,7 @@ def generate_launch_description() -> LaunchDescription:
     ############################################
     # Launch move_home server
     move_home_server = Node(
-        package='kuka_motion',
+        package='lbr_motion',
         executable='move_home_server',
         name='move_home_server',
         output='screen',

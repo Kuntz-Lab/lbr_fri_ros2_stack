@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'kuka_motion'
+package_name = 'lbr_motion'
 
 setup(
     name=package_name,
@@ -23,15 +23,15 @@ setup(
     # },
     entry_points={
         'console_scripts': [
-            'move_to_pose = kuka_motion.move_to_pose:main',
-            'pose_publisher = kuka_motion.pose_pub:main',
-            'tf_tree_sub = kuka_motion.tf_tree_sub:main',
-            'move_to_pose_server = kuka_motion.move_to_pose_server:main',
-            'move_to_pose_client = kuka_motion.move_to_pose_client:main',
-            'joint_servo_pub = kuka_motion.joint_servo_pub:main',
-            'twist_servo_pub = kuka_motion.twist_servo_pub:main',
-            'move_home_server = kuka_motion.move_home_server:main',
-            'move_home_client = kuka_motion.move_home_client:main',
+            'move_to_pose = lbr_motion.move_to_pose:main',
+            'pose_publisher = lbr_motion.pose_pub:main',
+            'tf_tree_sub = lbr_motion.tf_tree_sub:main',
+            'move_to_pose_server = lbr_motion.move_to_pose_server:main',
+            'move_to_pose_client = lbr_motion.move_to_pose_client:main',
+            'joint_servo_pub = lbr_motion.joint_servo_pub:main',
+            'twist_servo_pub = lbr_motion.twist_servo_pub:main',
+            'move_home_server = lbr_motion.move_home_server:main',
+            'move_home_client = lbr_motion.move_home_client:main',
         ],
     },
 )

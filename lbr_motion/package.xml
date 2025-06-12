@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>kuka_motion</name>
+  <name>lbr_motion</name>
   <version>0.0.0</version>
   <description>Kuka robot motion control package</description>
   <maintainer email="joe.liechty6@gmail.com">joe</maintainer>
@@ -15,7 +15,7 @@
   <depend>tf2_ros</depend>
   <!-- <depend>numpy</depend> -->
   <depend>python3-numpy</depend>
-  <depend>kuka_interfaces</depend>
+  <depend>lbr_interfaces</depend>
   <depend>control_msgs</depend>
 
   <test_depend>ament_copyright</test_depend>

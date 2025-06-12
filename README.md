@@ -88,23 +88,23 @@ Now, run the [demos](https://lbr-stack.readthedocs.io/en/latest/lbr_fri_ros2_sta
 6. The custom move_to_pose nodes can be launched in simulation mode via
 
     ```shell
-    ros2 launch lbr_bringup kuka_move_to_pose.launch.py model:=med14_robotiq_2f
+    ros2 launch lbr_bringup lbr_move_to_pose.launch.py model:=med14_robotiq_2f
     ```
 
 7. The move_to_pose nodes can be launched in hardware mode via 
 
     ```shell
-    ros2 launch lbr_bringup kuka_move_to_pose.launch.py mode:=hardware model:=med14_robotiq_2f
+    ros2 launch lbr_bringup lbr_move_to_pose.launch.py mode:=hardware model:=med14_robotiq_2f
     ```
     on the Peception PC (which doesn't have a realtime kernel) and 
     ```shell
-    ros2 launch lbr_bringup kuka_and_robotiq_hardware.launch.py
+    ros2 launch lbr_bringup lbr_and_robotiq_hardware.launch.py
     ```
     on the robot PC (which is connected to the KUKA controller and the Robotiq controller and is running a realtime/low-latency kernel).
 
     These launch files launch the robot description with the gripper attached to the end of the robot, the MoveIt services, and the controllers for the robot and gripper (either in sim or on hardware depending on which mode you chose).
 
-8. Custom nodes can be found in the kuka_motion package. These nodes include:
+8. Custom nodes can be found in the lbr_motion package. These nodes include:
     - joint_servo_pub: which publishes joint servoing commands to "jog" the robot joints
     - move_home_client: which publishes a request to send the robot to the home position
     - move_home_server: which is a wrapper aroung MoveIt that commands the robot to move to the home position (all joint angles are 0)
@@ -120,33 +120,33 @@ Now, run the [demos](https://lbr-stack.readthedocs.io/en/latest/lbr_fri_ros2_sta
 9. To do joint servoing or end-effector twist servoing the robot needs to be using the forward position controller. This requires a different setup from running the move_to_pose server which requires the robot to be using the position controller. As long as there is a topic being published on either the joint servo or twist servo topics, the robot will jog. Once the topic stops publishing the robot stops moving. Launch twist servoing in simulation via:
     
     ```shell
-    ros2 launch lbr_bringup kuka_servoing.launch.py
+    ros2 launch lbr_bringup lbr_servoing.launch.py
     ```
 
     ```shell
-    ros2 run kuka_motion twist_servo_pub
+    ros2 run lbr_motion twist_servo_pub
     ```
     or
     ```shell
-    ros2 run kuka_motion joint_servo_pub
+    ros2 run lbr_motion joint_servo_pub
     ```
 
     For hardware:
 
     ```shell
-    ros2 launch lbr_bringup kuka_and_robotiq_hardware.launch.py ctrl:='forward_position_controller'
+    ros2 launch lbr_bringup lbr_and_robotiq_hardware.launch.py ctrl:='forward_position_controller'
     ```
     
     ```shell
-    ros2 launch lbr_bringup kuka_servoing.launch.py mode:=hardware
+    ros2 launch lbr_bringup lbr_servoing.launch.py mode:=hardware
     ```
 
     ```shell
-    ros2 run kuka_motion twist_servo_pub
+    ros2 run lbr_motion twist_servo_pub
     ```
     or
     ```shell
-    ros2 run kuka_motion joint_servo_pub
+    ros2 run lbr_motion joint_servo_pub
     ```
 
 

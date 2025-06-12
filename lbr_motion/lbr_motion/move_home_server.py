@@ -10,7 +10,7 @@ from rclpy.action.client import GoalStatus
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from geometry_msgs.msg import Pose, Vector3, PoseStamped
-from kuka_interfaces.action import MoveHome as WrapperAction
+from lbr_interfaces.action import MoveHome as WrapperAction
 from tf2_ros import TransformListener, Buffer
 from sensor_msgs.msg import JointState
 from moveit_msgs.srv import GetPositionIK

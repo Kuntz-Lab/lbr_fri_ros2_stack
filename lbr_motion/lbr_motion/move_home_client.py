@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from rclpy.action.client import ClientGoalHandle, GoalStatus
-from kuka_interfaces.action import MoveHome
+from lbr_interfaces.action import MoveHome
 from geometry_msgs.msg import Vector3
 import numpy as np
     
