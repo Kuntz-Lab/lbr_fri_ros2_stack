@@ -121,6 +121,28 @@ def generate_launch_description() -> LaunchDescription:
     # MOVE-IT
     ############################################
     # Include move_group.launch.py
+    def print_launch_args(context, *args, **kwargs):
+        resolved_model = context.launch_configurations.get('model')
+        resolved_mode = context.launch_configurations.get('mode')
+        resolved_rviz = context.launch_configurations.get('rviz')
+        resolved_sensors_3d = context.launch_configurations.get('sensors_3d')
+        resolved_sensors_3d_config = context.launch_configurations.get('sensors_3d_config')
+        
+        print("\n"*20)
+        print(f"Model: {resolved_model}")
+        print(f"Mode: {resolved_mode}")
+        print(f"RViz: {resolved_rviz}")
+        print(f"Sensors 3D: {resolved_sensors_3d}")
+        print(f"Sensors 3D Config: {resolved_sensors_3d_config}")
+        print("\n"*20)
+        
+        # Must return actions to be executed
+        return []
+
+    # Add this before move_group_launch
+    print_args = OpaqueFunction(function=print_launch_args)
+    ld.add_action(print_args)
+
     move_group_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([

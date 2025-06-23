@@ -200,7 +200,8 @@ class MoveToPoseServer(Node):
                 self.get_logger().info(f"\nM2P SRV: End Effector Position: x={translation.x}, y={translation.y}, z={translation.z}\nEnd Effector Orientation: x={rotation.x}, y={rotation.y}, z={rotation.z}, w={rotation.w}") 
             
         except Exception as e: 
-            self.get_logger().warn(f"M2P SRV: Could not get transform: {e}")
+            # self.get_logger().warn(f"M2P SRV: Could not get transform: {e}")
+            pass
 
     # /***************************************************************************************************/
     # /*    JOINT_STATE_LISTENER_CALLBACK                                                                */
