@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Pose
 from std_msgs.msg import Header
 import numpy as np
     
@@ -25,54 +25,58 @@ class PosePublisher(Node): # MODIFY NAME
         # Uncomment to only publish once
         # self.publish_desired_pose()
 
-    
-    def publish_desired_pose(self, x, y, z, roll, pitch, yaw, frame_id="world"):
+
+    def publish_desired_pose(self, pose: Pose, frame_id: str = "world"):
         msg = PoseStamped()
 
         header_msg = Header()
         header_msg.stamp = self.get_clock().now().to_msg()
         header_msg.frame_id = frame_id
 
-        orientation = self.euler_to_quaternion(roll, pitch, yaw)
-
         msg.header = header_msg
-        msg.pose.position.x = x
-        msg.pose.position.y = y
-        msg.pose.position.z = z
-        msg.pose.orientation.x = orientation[0]
-        msg.pose.orientation.y = orientation[1]
-        msg.pose.orientation.z = orientation[2]
-        msg.pose.orientation.w = orientation[3]
+        msg.pose = pose
 
         self._desired_pose_publisher.publish(msg)
 
-    def euler_to_quaternion(self, roll, pitch, yaw):
-        """Converts Euler angles (in radians) to a quaternion."""
-        cy = np.cos(yaw * 0.5)
-        sy = np.sin(yaw * 0.5)
-        cp = np.cos(pitch * 0.5)
-        sp = np.sin(pitch * 0.5)
-        cr = np.cos(roll * 0.5)
-        sr = np.sin(roll * 0.5)
+def euler_to_quaternion(roll, pitch, yaw):
+    """Converts Euler angles (in radians) to a quaternion."""
+    cy = np.cos(yaw * 0.5)
+    sy = np.sin(yaw * 0.5)
+    cp = np.cos(pitch * 0.5)
+    sp = np.sin(pitch * 0.5)
+    cr = np.cos(roll * 0.5)
+    sr = np.sin(roll * 0.5)
 
-        w = cr * cp * cy + sr * sp * sy
-        x = sr * cp * cy - cr * sp * sy
-        y = cr * sp * cy + sr * cp * sy
-        z = cr * cp * sy - sr * sp * cy
+    w = cr * cp * cy + sr * sp * sy
+    x = sr * cp * cy - cr * sp * sy
+    y = cr * sp * cy + sr * cp * sy
+    z = cr * cp * sy - sr * sp * cy
 
-        return [x, y, z, w]
+    return [x, y, z, w]
 
 def main(args=None):
     rclpy.init(args=args)
     node = PosePublisher() # MODIFY NAME
-    x = 0.00
-    y = 0.0
-    z = 1.1
+
+    goal_pose = Pose()
+    goal_pose.position.x = 0.0
+    goal_pose.position.y = 0.0
+    goal_pose.position.z = 1.3
+
+    # since quaternions can be a bit tricky to specify, we will use Euler angles for the example. All real ROS applications use strictly quaternions and rotation matrices.
+    # roll, pitch, yaw are in radians
     roll = 0.0
     pitch = 0.0
     yaw = 0.0
+    goal_quat = euler_to_quaternion(roll, pitch, yaw)
+    goal_pose.orientation.x = goal_quat[0]
+    goal_pose.orientation.y = goal_quat[1]
+    goal_pose.orientation.z = goal_quat[2]
+    goal_pose.orientation.w = goal_quat[3]
+
     frame_id = "world"
-    node.publish_desired_pose(x, y, z, roll, pitch, yaw, frame_id)
+
+    node.publish_desired_pose(goal_pose, frame_id)
     rclpy.spin(node)
     rclpy.shutdown()
     
