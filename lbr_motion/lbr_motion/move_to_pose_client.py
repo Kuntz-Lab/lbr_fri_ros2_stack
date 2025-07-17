@@ -4,7 +4,7 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from rclpy.action.client import ClientGoalHandle, GoalStatus
 from lbr_interfaces.action import MoveToPose
-from geometry_msgs.msg import Vector3
+from geometry_msgs.msg import Vector3, Pose
 import numpy as np
     
     
@@ -18,8 +18,7 @@ class MoveToPoseClientNode(Node): # MODIFY NAME
     
 
     def send_goal(self, 
-                  position: Vector3, 
-                  rpy: Vector3, 
+                  pose: Pose, 
                   planning_group: str = "arm",
                   vel_scaling: float = 0.1,
                   acc_scaling: float = 0.1):
@@ -34,14 +33,7 @@ class MoveToPoseClientNode(Node): # MODIFY NAME
         goal.desired_pose.header.stamp = self.get_clock().now().to_msg()
 
         # add pose
-        goal.desired_pose.pose.position.x = position.x
-        goal.desired_pose.pose.position.y = position.y
-        goal.desired_pose.pose.position.z = position.z
-        orientation = self.euler_to_quaternion(rpy.x, rpy.y, rpy.z)
-        goal.desired_pose.pose.orientation.x = orientation[0]
-        goal.desired_pose.pose.orientation.y = orientation[1]
-        goal.desired_pose.pose.orientation.z = orientation[2]
-        goal.desired_pose.pose.orientation.w = orientation[3]
+        goal.desired_pose.pose = pose
 
         # add planning group
         goal.planning_group = planning_group
@@ -78,21 +70,21 @@ class MoveToPoseClientNode(Node): # MODIFY NAME
         self.get_logger().info(f"Result: {result}") 
 
 
-    def euler_to_quaternion(self, roll, pitch, yaw):
-        """Converts Euler angles (in radians) to a quaternion."""
-        cy = np.cos(yaw * 0.5)
-        sy = np.sin(yaw * 0.5)
-        cp = np.cos(pitch * 0.5)
-        sp = np.sin(pitch * 0.5)
-        cr = np.cos(roll * 0.5)
-        sr = np.sin(roll * 0.5)
+def euler_to_quaternion(roll, pitch, yaw):
+    """Converts Euler angles (in radians) to a quaternion."""
+    cy = np.cos(yaw * 0.5)
+    sy = np.sin(yaw * 0.5)
+    cp = np.cos(pitch * 0.5)
+    sp = np.sin(pitch * 0.5)
+    cr = np.cos(roll * 0.5)
+    sr = np.sin(roll * 0.5)
 
-        w = cr * cp * cy + sr * sp * sy
-        x = sr * cp * cy - cr * sp * sy
-        y = cr * sp * cy + sr * cp * sy
-        z = cr * cp * sy - sr * sp * cy
+    w = cr * cp * cy + sr * sp * sy
+    x = sr * cp * cy - cr * sp * sy
+    y = cr * sp * cy + sr * cp * sy
+    z = cr * cp * sy - sr * sp * cy
 
-        return [x, y, z, w]
+    return [x, y, z, w]
 
 
     
@@ -101,17 +93,22 @@ def main(args=None):
     node = MoveToPoseClientNode() # MODIFY NAME
     
     # Example end-effector pose
-    goal_pos = Vector3()
-    goal_pos.x = 0.0
-    goal_pos.y = 0.0
-    goal_pos.z = 1.3
+    goal_pose = Pose()
+    goal_pose.position.x = 0.0
+    goal_pose.position.y = 0.0
+    goal_pose.position.z = 1.3
+    # since it can be a bit tricky to specify quaternions, we will use Euler angles for the example. All real ROS applications use strictly quaternions and rotation matrices.
+    # roll, pitch, yaw are in radians
+    roll = 0.0
+    pitch = 0.0
+    yaw = 0.0
+    goal_quat = euler_to_quaternion(roll, pitch, yaw)
+    goal_pose.orientation.x = goal_quat[0]
+    goal_pose.orientation.y = goal_quat[1]
+    goal_pose.orientation.z = goal_quat[2]  
+    goal_pose.orientation.w = goal_quat[3]
 
-    goal_rpy = Vector3()
-    goal_rpy.x = 0.0
-    goal_rpy.y = 0.0
-    goal_rpy.z = 0.0
-
-    node.send_goal(goal_pos, goal_rpy, "arm", 0.1, 0.1)
+    node.send_goal(goal_pose, "arm", 0.1, 0.1)
     rclpy.spin(node)
     rclpy.shutdown()
     
