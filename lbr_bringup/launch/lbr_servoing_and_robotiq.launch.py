@@ -39,7 +39,7 @@ def generate_launch_description() -> LaunchDescription:
     rviz = LaunchConfiguration('rviz')
 
     # Package paths
-    lbr_bringup_path = FindPackageShare('lbr_bringup')]
+    lbr_bringup_path = FindPackageShare('lbr_bringup')
 
     # If the model is med14_robotiq_2f, use the combined controllers cfg file, otherwise use the default    #ADDED
     ctrl_cfg = PythonExpression([
