@@ -30,7 +30,7 @@ class TwistServoPublisher(Node): # MODIFY NAME
         msg.header = header_msg
         msg.twist.linear.x = -0.05
         msg.twist.linear.y = -0.05
-        msg.twist.linear.z = 0.5
+        msg.twist.linear.z = 0.1
         msg.twist.angular.x = 0.0
         msg.twist.angular.y = 0.0
         msg.twist.angular.z = 0.0

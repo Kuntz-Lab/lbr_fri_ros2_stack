@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<robot name="gepetto_hand" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- <xacro:include filename="$(find lbr_description)/urdf/med14_gepetto/common_properties.xacro" /> -->
+
+    <!--
+        The Gepetto tendon-driven hand, as seen by the arm: a single wrist frame at the
+        fixed mount offset from the flange. The hand's own morphology (fingers, tendons)
+        is not modelled here - every finger origin in gepetto_core and every solver pose
+        in crest-sparse is measured from this wrist frame, so this frame is all the arm
+        side needs.
+
+        The origin below is MountConfig.flange_from_wrist_xyz / _rpy from
+        gepetto_core/src/gepetto_core/config.py, copied verbatim. No conversion is needed:
+        gepetto_core's transform_from_xyz_rpy builds R = Rz(yaw) @ Ry(pitch) @ Rx(roll),
+        which is exactly URDF's <origin rpy="roll pitch yaw"> convention.
+
+        WARNING: these numbers are copied by hand and nothing here can detect a stale
+        value. They were measured 2026-08-18 against the "gepetto_hand / Assembly 1"
+        Onshape assembly. After any change to that assembly, to the mounting bracket, or
+        to the hand morphology, re-run
+
+            python -m python.tests.tendon_hand.mount_onshape_fit
+
+        from crest-sparse/ and copy the numbers over here AND into config.py. The rotation
+        is nearly a pair of right angles, so a flipped one still looks plausible - verify
+        with `ros2 run tf2_ros tf2_echo <robot_name>_link_ee <robot_name>_gepetto_wrist_link`
+        against HandConfig().mount.T_flange_from_wrist().
+    -->
+    <xacro:macro name="gepetto_hand_description" params="parent_link robot_name">
+
+        <xacro:property name="marker_size" value="0.03" />
+
+        <!--
+            Marker geometry only, so the frame is visible in RViz. Visualizing the hand
+            itself is deliberately out of scope. No <inertial> and no <collision>, matching
+            the robotiq adapter link, so this needs no inertia macro and adds nothing to
+            the collision scene.
+        -->
+        <link name="${robot_name}_gepetto_wrist_link">
+            <visual>
+                <geometry>
+                    <box size="${marker_size} ${marker_size} ${marker_size}" />
+                </geometry>
+                <origin xyz="0 0 0" rpy="0 0 0" />
+                <material name="grey" />
+            </visual>
+        </link>
+
+        <joint name="${robot_name}_gepetto_wrist_joint" type="fixed">
+            <parent link="${parent_link}" />
+            <child link="${robot_name}_gepetto_wrist_link" />
+            <origin xyz="-0.009490 -0.010641 0.134688"
+                    rpy="1.570796 0.174533 -1.570796" />
+        </joint>
+
+    </xacro:macro>
+
+</robot>
