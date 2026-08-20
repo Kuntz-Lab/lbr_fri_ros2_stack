@@ -354,31 +354,65 @@ Servoing jogs the robot continuously instead of planning point-to-point motions.
 
 As long as something is publishing on the servo topics, the robot jogs; when publishing stops, it stops.
 
-**Simulation:**
+### Gepetto hand (`med14_gepetto`)
+
+For simulation, launch the complete servoing stack on the perception PC. This starts the mock
+robot with the Gepetto wrist model, `forward_position_controller`, MoveIt Servo, and RViz:
 
 ```shell
-# terminal 1 - mock robot on forward_position_controller + MoveIt Servo + RViz
-ros2 launch lbr_bringup lbr_servoing.launch.py
-# ...or, to also spawn the Robotiq controllers in mock mode:
-ros2 launch lbr_bringup lbr_servoing_and_robotiq.launch.py
+ros2 launch lbr_bringup lbr_servoing.launch.py model:=med14_gepetto
+```
 
-# terminal 2 - pick one
+For hardware, split the stack across the two PCs. After starting the FRI application on the
+KUKA smartPAD, launch the hardware interface and position controller on the robot PC:
+
+```shell
+ros2 launch lbr_bringup hardware.launch.py \
+    model:=med14_gepetto \
+    ctrl:=forward_position_controller
+```
+
+On the perception PC, launch MoveIt Servo and RViz in hardware mode:
+
+```shell
+ros2 launch lbr_bringup lbr_servoing.launch.py \
+    model:=med14_gepetto \
+    mode:=hardware
+```
+
+In either simulation or hardware mode, start a servo command publisher in another terminal on
+the perception PC:
+
+```shell
+# Pick one:
 ros2 run lbr_motion twist_servo_pub
 ros2 run lbr_motion joint_servo_pub
 ```
 
-**Hardware:**
+Both PCs must use the same `ROS_DOMAIN_ID` and RMW implementation. The `model` must remain
+`med14_gepetto` on both sides so MoveIt and the robot PC use the same robot description.
+
+### Robotiq alternative
+
+To use the Robotiq configuration in simulation, launch its combined servoing stack instead:
 
 ```shell
-# robot PC
-ros2 launch lbr_bringup lbr_and_robotiq_hardware.launch.py ctrl:='forward_position_controller'
+ros2 launch lbr_bringup lbr_servoing_and_robotiq.launch.py model:=med14_robotiq_2f
+```
 
-# perception PC
-ros2 launch lbr_bringup lbr_servoing.launch.py mode:=hardware
+On hardware, use `lbr_and_robotiq_hardware.launch.py` on the robot PC and
+`lbr_servoing.launch.py mode:=hardware` on the perception PC:
 
-# perception PC, pick one
-ros2 run lbr_motion twist_servo_pub
-ros2 run lbr_motion joint_servo_pub
+```shell
+# Robot PC
+ros2 launch lbr_bringup lbr_and_robotiq_hardware.launch.py \
+    model:=med14_robotiq_2f \
+    ctrl:=forward_position_controller
+
+# Perception PC
+ros2 launch lbr_bringup lbr_servoing.launch.py \
+    model:=med14_robotiq_2f \
+    mode:=hardware
 ```
 
 Servo parameters live in [lbr_bringup/config/moveit_servo.yaml](lbr_bringup/config/moveit_servo.yaml).

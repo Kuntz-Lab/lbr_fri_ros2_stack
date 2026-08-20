@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<robot name="workspace_table" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!--
+        The workspace table: the 40 cm x 40 cm, 10 cm thick slab the hand works over.
+        It is a static obstacle bolted to the cell, so it hangs off the robot base link
+        rather than off any moving link.
+
+        Frame convention (all numbers below are in the robot base frame,
+        <robot_name>_link_0):
+
+          - the frame origin sits on the corner of the square nearest the robot,
+            at (-0.50, 0.20, 0.125)
+          - the table x axis points along the robot +y axis
+          - the table y axis points along the robot -x axis
+          - the z axes are aligned
+
+        That is a pure +90 deg yaw about z. With the slab extending along its own +x and
+        +y from the origin corner, it occupies robot x in [-0.90, -0.50] and robot y in
+        [0.20, 0.60], so the origin corner really is the closest one.
+
+        The 12.5 cm is read as the height of the *top* surface, matching
+        table_description.xacro where the slab hangs below its attachment frame, so the
+        slab spans robot z in [0.025, 0.125]. Flip the sign on slab_origin_z below if the
+        measurement was ever taken to the underside instead.
+    -->
+    <xacro:macro name="workspace_table_description" params="parent_link robot_name">
+
+        <xacro:property name="table_length" value="0.4" />
+        <xacro:property name="table_width" value="0.4" />
+        <xacro:property name="table_thickness" value="0.1" />
+
+        <!-- box centre, expressed in the table frame whose origin is the near corner -->
+        <xacro:property name="slab_origin_x" value="${table_length/2}" />
+        <xacro:property name="slab_origin_y" value="${table_width/2}" />
+        <xacro:property name="slab_origin_z" value="${-table_thickness/2}" />
+
+        <link name="${robot_name}_workspace_table_link">
+            <visual>
+                <geometry>
+                    <box size="${table_length} ${table_width} ${table_thickness}" />
+                </geometry>
+                <origin xyz="${slab_origin_x} ${slab_origin_y} ${slab_origin_z}" rpy="0 0 0" />
+                <material name="grey" />
+            </visual>
+
+            <xacro:box_inertia m="2.0" l="${table_length}" w="${table_width}" h="${table_thickness}"
+                               xyz="${slab_origin_x} ${slab_origin_y} ${slab_origin_z}" rpy="0 0 0" />
+
+            <collision>
+                <geometry>
+                    <box size="${table_length} ${table_width} ${table_thickness}" />
+                </geometry>
+                <origin xyz="${slab_origin_x} ${slab_origin_y} ${slab_origin_z}" rpy="0 0 0" />
+            </collision>
+        </link>
+
+        <joint name="${robot_name}_workspace_table_joint" type="fixed">
+            <parent link="${parent_link}" />
+            <child link="${robot_name}_workspace_table_link" />
+            <origin xyz="-0.5 0.2 0.125" rpy="0 0 ${pi/2}" />
+        </joint>
+
+    </xacro:macro>
+
+</robot>

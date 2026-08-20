@@ -8,6 +8,7 @@
     <xacro:include filename="$(find lbr_description)/urdf/med14_gepetto/gepetto_hand_description.xacro" />
     <xacro:include filename="$(find lbr_description)/urdf/med14_gepetto/common_properties.xacro" />
     <xacro:include filename="$(find lbr_description)/urdf/med14_gepetto/table_description.xacro" />
+    <xacro:include filename="$(find lbr_description)/urdf/med14_gepetto/workspace_table_description.xacro" />
 
     <xacro:arg name="robot_name" default="lbr" />
     <xacro:arg name="mode" default="true" />
@@ -41,6 +42,11 @@
 
     <!-- attach table to robot base -->
     <xacro:table_description
+        parent_link="$(arg robot_name)_link_0"
+        robot_name="$(arg robot_name)" />
+
+    <!-- attach workspace table to robot base -->
+    <xacro:workspace_table_description
         parent_link="$(arg robot_name)_link_0"
         robot_name="$(arg robot_name)" />
 
