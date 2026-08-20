@@ -30,10 +30,15 @@ class TwistServoPublisher(Node): # MODIFY NAME
         msg.header = header_msg
         # command_in_type is "unitless": values are fractions of scale.linear (0.4 m/s)
         # and scale.rotational (0.8 rad/s) from lbr_bringup/config/moveit_servo.yaml.
-        # -0.25 => -0.1 m/s along lbr_link_0's x-axis.
-        msg.twist.linear.x = -0.25
+        # -0.1 => -0.04 m/s along lbr_link_0's z-axis (straight down).
+        #
+        # The frame_id above is only the reference frame the components are expressed in.
+        # The point being servoed is the SRDF chain tip of group "arm"
+        # (lbr_gepetto_wrist_link, see med14_gepetto.srdf) -- rotations pivot about that
+        # link's origin, not about whatever frame_id names.
+        msg.twist.linear.x = 0.0
         msg.twist.linear.y = 0.0
-        msg.twist.linear.z = 0.0
+        msg.twist.linear.z = -0.5
         msg.twist.angular.x = 0.0
         msg.twist.angular.y = 0.0
         msg.twist.angular.z = 0.0
