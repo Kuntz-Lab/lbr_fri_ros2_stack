@@ -27,6 +27,10 @@ Examples:
 
     # arm only
     ros2 launch lbr_bringup lbr_gepetto.launch.py gepetto_nodes:=none
+
+    # resolved rate control + the interactive visualizer wired to the robot,
+    # at http://localhost:8080 -- solve in the browser, play it on the hardware
+    ros2 launch lbr_bringup lbr_gepetto.launch.py servo:=true gepetto_nodes:=viz
 """
 
 from launch import LaunchDescription
@@ -92,9 +96,12 @@ def generate_launch_description() -> LaunchDescription:
             "gepetto_nodes",
             default_value="sliders",
             description="Which hand nodes to start. 'sliders' is the open-loop slider "
-            "GUI, 'full' is hand_node + state_estimator + planner. These are mutually "
-            "exclusive: finger_slider_node and hand_node both claim /dev/ttyUSB*.",
-            choices=["sliders", "full", "none"],
+            "GUI, 'full' is hand_node + state_estimator + planner, 'viz' is the "
+            "interactive viser visualizer in ROS mode + finger_servo_node (the one "
+            "that can play a solve on the robot). These are mutually exclusive: "
+            "finger_slider_node, hand_node and finger_servo_node all claim "
+            "/dev/ttyUSB*.",
+            choices=["sliders", "full", "viz", "none"],
         )
     )
     gepetto_nodes = LaunchConfiguration("gepetto_nodes")
@@ -215,6 +222,7 @@ def generate_launch_description() -> LaunchDescription:
         PythonExpression(["'", gepetto_nodes, "' == 'sliders'"])
     )
     use_full = IfCondition(PythonExpression(["'", gepetto_nodes, "' == 'full'"]))
+    use_viz = IfCondition(PythonExpression(["'", gepetto_nodes, "' == 'viz'"]))
 
     ld.add_action(
         Node(
@@ -270,6 +278,41 @@ def generate_launch_description() -> LaunchDescription:
             output="screen",
             additional_env=gepetto_env,
             condition=use_full,
+        )
+    )
+
+    # gepetto_nodes:=viz -- the interactive visualizer, wired to this robot. Pair
+    # it with servo:=true: the visualizer's "Play solve on robot" publishes
+    # Cartesian twists to MoveIt Servo, which only runs in that mode. It talks to
+    # the hand through finger_servo_node below rather than owning the bus itself.
+    ld.add_action(
+        Node(
+            package="gepetto_control",
+            executable="viz_node",
+            name="gepetto_viz",
+            output="screen",
+            additional_env=gepetto_env,
+            condition=use_viz,
+        )
+    )
+    ld.add_action(
+        Node(
+            package="gepetto_hardware",
+            executable="finger_servo_node",
+            name="finger_servo_node",
+            output="screen",
+            additional_env=gepetto_env,
+            parameters=[
+                {
+                    "moving_speed": ParameterValue(
+                        LaunchConfiguration("moving_speed"), value_type=int
+                    ),
+                    "torque_limit": ParameterValue(
+                        LaunchConfiguration("torque_limit"), value_type=int
+                    ),
+                }
+            ],
+            condition=use_viz,
         )
     )
 
