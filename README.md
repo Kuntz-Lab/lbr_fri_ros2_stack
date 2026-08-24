@@ -198,7 +198,7 @@ All launch files live in [lbr_bringup/launch](lbr_bringup/launch/). Fork additio
 | ★`lbr_and_robotiq_hardware.launch.py` | `hardware.launch.py` + Robotiq gripper/activation controller spawners | `model` (`med14_robotiq_2f`), `robot_name` (`lbr`), `com_port` (`/dev/ttyUSB1`) |
 | ★`lbr_servoing.launch.py` | Mock robot on `forward_position_controller` + MoveIt Servo + RViz | `model` (`med14_robotiq_2f`), `mode` (`mock`), `rviz` (`true`) |
 | ★`lbr_servoing_and_robotiq.launch.py` | Same as above but also spawns the Robotiq controllers in mock mode | `model` (`med14_robotiq_2f`), `mode` (`mock`), `rviz` (`true`) |
-| ★`lbr_gepetto.launch.py` | Mock robot + RViz + the Gepetto hand nodes; with `servo:=true`, MoveIt Servo on `forward_position_controller` | `model` (`med14_gepetto`), `mode` (`mock`), `servo` (`false`), `rviz` (`true`), `gepetto_nodes` (`sliders`), `moving_speed` (`0`), `torque_limit` (`0`), `command_hz` (`20.0`), `conda_prefix` (`~/miniconda3/envs/crest_py10`) |
+| ★`lbr_gepetto.launch.py` | Mock robot on `forward_position_controller` + MoveIt Servo + RViz + the Gepetto hand nodes | `model` (`med14_gepetto`), `mode` (`mock`), `servo` (`true`), `rviz` (`true`), `gepetto_nodes` (`viz`), `moving_speed` (`0`), `torque_limit` (`0`), `command_hz` (`20.0`), `conda_prefix` (`~/miniconda3/envs/crest_py10`) |
 
 Notes on the fork launch files:
 
@@ -319,29 +319,34 @@ marker geometry only; the hand itself is not modelled.
 > `HandConfig().mount.T_flange_from_wrist()` — the rotation is nearly a pair of right angles, so
 > a flipped one still looks plausible.
 
-Description + RViz + the finger slider panel:
+Resolved-rate control (MoveIt Servo on `forward_position_controller`) + RViz + the
+interactive visualizer at <http://localhost:8080>, which is the way the cell is normally
+driven:
 
 ```shell
 ros2 launch lbr_bringup lbr_gepetto.launch.py
 ```
 
-The same thing under resolved-rate control (MoveIt Servo on `forward_position_controller`):
+That opens the Dynamixel port. Without the hand plugged in, bring the arm up alone and pair
+it with a dry-run hand:
 
 ```shell
-ros2 launch lbr_bringup lbr_gepetto.launch.py servo:=true
-# then, in a second terminal
-ros2 run lbr_motion twist_servo_pub
+ros2 launch lbr_bringup lbr_gepetto.launch.py gepetto_nodes:=none
+# then, in other terminals
+ros2 run gepetto_hardware finger_servo_node --ros-args -p dry_run:=true
+ros2 run lbr_motion twist_servo_pub          # or: ros2 run gepetto_control home_node
 ```
 
 | Argument | Default | Meaning |
 | :--- | :--- | :--- |
-| `servo` | `false` | `true` swaps `joint_trajectory_controller` for `forward_position_controller` and starts MoveIt Servo. The MoveIt include is condition-gated, so `servo:=false` does not need MoveIt installed. |
-| `gepetto_nodes` | `sliders` | `sliders` = `finger_slider_node` only; `full` = `hand_node` + `state_estimator` + `planner`; `none` = arm only. |
+| `servo` | `true` | `forward_position_controller` + MoveIt Servo, which is what `viz_node`, `home_node` and `lbr_motion`'s `*_servo_pub` all command. `servo:=false` falls back to `joint_trajectory_controller`; the MoveIt include is condition-gated, so that mode does not need MoveIt installed. |
+| `gepetto_nodes` | `viz` | `viz` = `viz_node` + `finger_servo_node`; `sliders` = `finger_slider_node` only; `full` = `hand_node` + `state_estimator` + `planner`; `none` = arm only. |
 | `conda_prefix` | `~/miniconda3/envs/crest_py10` | Env supplying `gepetto_core` and `crest_sparse` to the hand nodes. |
-| `moving_speed`, `torque_limit`, `command_hz` | `0`, `0`, `20.0` | Passed to `finger_slider_node`; `0` keeps the `HandConfig` default. |
+| `moving_speed`, `torque_limit`, `command_hz` | `0`, `0`, `20.0` | Passed to the hand nodes; `0` keeps the `HandConfig` default. |
 
-`gepetto_nodes` is one enum rather than separate switches on purpose: `finger_slider_node` and
-`hand_node` both claim `/dev/ttyUSB*` and cannot run at the same time.
+`gepetto_nodes` is one enum rather than separate switches on purpose: `finger_servo_node`,
+`finger_slider_node` and `hand_node` all claim `/dev/ttyUSB*` and cannot run at the same
+time.
 
 The conda environment is applied per-node via `additional_env` rather than a launch-wide
 `SetEnvironmentVariable` (which is what the launch files in `gepetto_launch` do). That keeps

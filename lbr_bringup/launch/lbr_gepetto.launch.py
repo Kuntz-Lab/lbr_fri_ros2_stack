@@ -6,31 +6,36 @@ one shot.
 
 Two modes of arm control, selected by `servo`:
 
-    servo:=false  (default)  joint_trajectory_controller -- plain description bringup,
-                             for eyeballing the mount transform in RViz. Needs no MoveIt.
-    servo:=true              forward_position_controller + MoveIt Servo, i.e. resolved
+    servo:=true   (default)  forward_position_controller + MoveIt Servo, i.e. resolved
                              rate control: Servo maps an incoming Cartesian twist to
                              joint velocities through the Jacobian pseudo-inverse and
                              publishes to /lbr/forward_position_controller/commands.
+                             This is how the cell is actually driven -- viz_node,
+                             home_node and lbr_motion's *_servo_pub all command Servo.
+    servo:=false             joint_trajectory_controller -- plain description bringup,
+                             for eyeballing the mount transform in RViz. Needs no MoveIt.
 
 The MoveIt Servo include is condition-gated, so with servo:=false nothing in this
 launch imports MoveIt.
 
 Examples:
 
-    # description + RViz + finger sliders
+    # the usual thing: resolved rate control + the interactive visualizer wired to
+    # the robot, at http://localhost:8080 -- solve in the browser, play it on the
+    # hardware. Opens the Dynamixel port; see gepetto_nodes:=none if the hand is
+    # not plugged in.
     ros2 launch lbr_bringup lbr_gepetto.launch.py
 
-    # resolved rate control + finger sliders, then drive it with
+    # arm only, for driving Servo by hand or for pairing with a dry_run hand:
+    #   ros2 run gepetto_hardware finger_servo_node --ros-args -p dry_run:=true
     #   ros2 run lbr_motion twist_servo_pub
-    ros2 launch lbr_bringup lbr_gepetto.launch.py servo:=true
-
-    # arm only
     ros2 launch lbr_bringup lbr_gepetto.launch.py gepetto_nodes:=none
 
-    # resolved rate control + the interactive visualizer wired to the robot,
-    # at http://localhost:8080 -- solve in the browser, play it on the hardware
-    ros2 launch lbr_bringup lbr_gepetto.launch.py servo:=true gepetto_nodes:=viz
+    # open-loop finger sliders instead of the visualizer
+    ros2 launch lbr_bringup lbr_gepetto.launch.py gepetto_nodes:=sliders
+
+    # description + RViz only, no MoveIt
+    ros2 launch lbr_bringup lbr_gepetto.launch.py servo:=false gepetto_nodes:=none
 """
 
 from launch import LaunchDescription
@@ -74,7 +79,7 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(
         DeclareLaunchArgument(
             "servo",
-            default_value="false",
+            default_value="true",
             description="Run under MoveIt Servo (resolved rate control) on "
             "forward_position_controller instead of joint_trajectory_controller.",
             choices=["true", "false"],
@@ -94,7 +99,7 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(
         DeclareLaunchArgument(
             "gepetto_nodes",
-            default_value="sliders",
+            default_value="viz",
             description="Which hand nodes to start. 'sliders' is the open-loop slider "
             "GUI, 'full' is hand_node + state_estimator + planner, 'viz' is the "
             "interactive viser visualizer in ROS mode + finger_servo_node (the one "
