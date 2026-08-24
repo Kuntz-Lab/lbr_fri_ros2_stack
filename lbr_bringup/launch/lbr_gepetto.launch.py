@@ -102,8 +102,10 @@ def generate_launch_description() -> LaunchDescription:
             default_value="viz",
             description="Which hand nodes to start. 'sliders' is the open-loop slider "
             "GUI, 'full' is hand_node + state_estimator + planner, 'viz' is the "
-            "interactive viser visualizer in ROS mode + finger_servo_node (the one "
-            "that can play a solve on the robot). These are mutually exclusive: "
+            "interactive viser visualizer in ROS mode + executor_node + "
+            "finger_servo_node (the combination that can play a solve on the "
+            "robot; the executor is the process that actually drives it). "
+            "These are mutually exclusive: "
             "finger_slider_node, hand_node and finger_servo_node all claim "
             "/dev/ttyUSB*.",
             choices=["sliders", "full", "viz", "none"],
@@ -286,15 +288,33 @@ def generate_launch_description() -> LaunchDescription:
         )
     )
 
-    # gepetto_nodes:=viz -- the interactive visualizer, wired to this robot. Pair
-    # it with servo:=true: the visualizer's "Play solve on robot" publishes
-    # Cartesian twists to MoveIt Servo, which only runs in that mode. It talks to
-    # the hand through finger_servo_node below rather than owning the bus itself.
+    # gepetto_nodes:=viz -- the interactive visualizer, its executor, and the
+    # finger servo, wired to this robot. Pair it with servo:=true: playing a solve
+    # publishes Cartesian twists to MoveIt Servo, which only runs in that mode.
+    #
+    # THREE NODES, AND ALL THREE ARE REQUIRED. viz_node draws and solves but does
+    # not drive anything; executor_node owns the control loop and is the only
+    # process that publishes motion commands during playback; finger_servo_node
+    # owns the Dynamixel bus. Without the executor the Robot folder reports "no
+    # executor on /gepetto/play_plan" and refuses to play. The visualizer and the
+    # loop are deliberately separate processes -- a heavy scene update used to
+    # stall the loop past MoveIt Servo's command timeout and trip the tracking
+    # watchdog. See gepetto_control/executor_node.py.
     ld.add_action(
         Node(
             package="gepetto_control",
             executable="viz_node",
             name="gepetto_viz",
+            output="screen",
+            additional_env=gepetto_env,
+            condition=use_viz,
+        )
+    )
+    ld.add_action(
+        Node(
+            package="gepetto_control",
+            executable="executor_node",
+            name="gepetto_executor",
             output="screen",
             additional_env=gepetto_env,
             condition=use_viz,

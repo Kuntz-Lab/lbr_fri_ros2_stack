@@ -58,7 +58,7 @@
         <joint name="${robot_name}_workspace_table_joint" type="fixed">
             <parent link="${parent_link}" />
             <child link="${robot_name}_workspace_table_link" />
-            <origin xyz="-0.5 0.2 0.125" rpy="0 0 ${pi/2}" />
+            <origin xyz="-0.5 0.16 0.125" rpy="0 0 ${pi/2}" />
         </joint>
 
     </xacro:macro>
