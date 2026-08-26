@@ -4,6 +4,13 @@
     <!-- <xacro:include filename="$(find lbr_description)/urdf/med14_gepetto/common_properties.xacro" /> -->
 
     <!--
+        The hand's measured mass and centre of mass, written by
+        gepetto_control/payload_id_node. Generated, unlike the mount offset below,
+        which is copied by hand. Empty until the identification has been run.
+    -->
+    <xacro:include filename="$(find lbr_description)/urdf/med14_gepetto/gepetto_payload.xacro" />
+
+    <!--
         The Gepetto tendon-driven hand, as seen by the arm: a single wrist frame at the
         fixed mount offset from the flange. The hand's own morphology (fingers, tendons)
         is not modelled here - every finger origin in gepetto_core and every solver pose
@@ -33,11 +40,12 @@
 
         <!--
             Marker geometry only, so the frame is visible in RViz. Visualizing the hand
-            itself is deliberately out of scope. No <inertial> and no <collision>, matching
-            the robotiq adapter link, so this needs no inertia macro and adds nothing to
-            the collision scene.
+            itself is deliberately out of scope. No <collision>, matching the robotiq
+            adapter link, so this adds nothing to the collision scene. The <inertial> is
+            whatever payload_id_node last measured, and nothing before the first run.
         -->
         <link name="${robot_name}_gepetto_wrist_link">
+            <xacro:gepetto_payload_inertial />
             <visual>
                 <geometry>
                     <box size="${marker_size} ${marker_size} ${marker_size}" />
