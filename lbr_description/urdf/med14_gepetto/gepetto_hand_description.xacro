@@ -22,6 +22,12 @@
         gepetto_core's transform_from_xyz_rpy builds R = Rz(yaw) @ Ry(pitch) @ Rx(roll),
         which is exactly URDF's <origin rpy="roll pitch yaw"> convention.
 
+        The z here is NOT the raw CAD number: the Onshape fit gives 0.134688 m, and
+        0.139688 m is that value plus a +5 mm real-world calibration correction found on
+        the physical robot. config.py carries the same corrected value; keep the two in
+        step, and re-apply the correction on top of any fresh measurement rather than
+        pasting the raw fit output.
+
         WARNING: these numbers are copied by hand and nothing here can detect a stale
         value. They were measured 2026-08-18 against the "gepetto_hand / Assembly 1"
         Onshape assembly. After any change to that assembly, to the mounting bracket, or
@@ -58,7 +64,7 @@
         <joint name="${robot_name}_gepetto_wrist_joint" type="fixed">
             <parent link="${parent_link}" />
             <child link="${robot_name}_gepetto_wrist_link" />
-            <origin xyz="-0.009490 -0.010641 0.134688"
+            <origin xyz="-0.009490 -0.010641 0.139688"
                     rpy="1.570796 0.174533 -1.570796" />
         </joint>
 

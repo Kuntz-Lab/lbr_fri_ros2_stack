@@ -301,7 +301,7 @@ ros2 action send_goal /move_to_home lbr_interfaces/action/MoveHome \
 `lbr_gepetto_wrist_link`, fixed to `lbr_link_ee` at the measured mount offset:
 
 ```xml
-<origin xyz="-0.009490 -0.010641 0.134688" rpy="1.570796 0.174533 -1.570796" />
+<origin xyz="-0.009490 -0.010641 0.139688" rpy="1.570796 0.174533 -1.570796" />
 ```
 
 Those numbers are `MountConfig.flange_from_wrist_xyz` / `_rpy` from
@@ -311,9 +311,14 @@ which is exactly URDF's `rpy` convention, so no conversion is involved. The wris
 marker geometry only; the hand itself is not modelled.
 
 > [!IMPORTANT]
+> The z is not the raw CAD number: `mount_onshape_fit.py` measures `0.134688`, and `0.139688` is
+> that plus a +5 mm correction from calibrating against the physical robot.
+>
 > Nothing detects a stale mount value. After any change to the Onshape assembly, the mounting
 > bracket, or the hand morphology, re-run `python -m python.tests.tendon_hand.mount_onshape_fit`
-> from `crest-sparse/` and update **both** `config.py` and
+> from `crest-sparse/`, re-apply the calibration correction to the fit output, and update **all
+> three** copies: `config.py`, `crest-sparse/python/tests/tendon_hand/mount.py`
+> (`MOUNT_WRIST_XYZ`), and
 > [gepetto_hand_description.xacro](lbr_description/urdf/med14_gepetto/gepetto_hand_description.xacro).
 > Verify with `ros2 run tf2_ros tf2_echo lbr_link_ee lbr_gepetto_wrist_link` against
 > `HandConfig().mount.T_flange_from_wrist()` — the rotation is nearly a pair of right angles, so
