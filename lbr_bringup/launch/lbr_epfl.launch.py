@@ -1,8 +1,8 @@
-"""Combined bringup for the med14 + Gepetto tendon-driven hand.
+"""Combined bringup for the med14 + EPFL tendon-driven hand.
 
-Brings up the `med14_gepetto` description (the arm, its table, and the hand's wrist
-frame at the fixed flange->wrist mount offset), RViz, and the Gepetto hand nodes in
-one shot.
+Brings up the `med14_epfl` description (the arm, its table, and the hand's wrist
+frame at the fixed flange->wrist mount offset), RViz, and the EPFL hand nodes from
+`gepetto_ros` in one shot.
 
 Two modes of arm control, selected by `servo`:
 
@@ -22,20 +22,20 @@ Examples:
 
     # the usual thing: resolved rate control + the interactive visualizer wired to
     # the robot, at http://localhost:8080 -- solve in the browser, play it on the
-    # hardware. Opens the Dynamixel port; see gepetto_nodes:=none if the hand is
+    # hardware. Opens the Dynamixel port; see epfl_nodes:=none if the hand is
     # not plugged in.
-    ros2 launch lbr_bringup lbr_gepetto.launch.py
+    ros2 launch lbr_bringup lbr_epfl.launch.py
 
     # arm only, for driving Servo by hand or for pairing with a dry_run hand:
     #   ros2 run gepetto_hardware finger_servo_node --ros-args -p dry_run:=true
     #   ros2 run lbr_motion twist_servo_pub
-    ros2 launch lbr_bringup lbr_gepetto.launch.py gepetto_nodes:=none
+    ros2 launch lbr_bringup lbr_epfl.launch.py epfl_nodes:=none
 
     # open-loop finger sliders instead of the visualizer
-    ros2 launch lbr_bringup lbr_gepetto.launch.py gepetto_nodes:=sliders
+    ros2 launch lbr_bringup lbr_epfl.launch.py epfl_nodes:=sliders
 
     # description + RViz only, no MoveIt
-    ros2 launch lbr_bringup lbr_gepetto.launch.py servo:=false gepetto_nodes:=none
+    ros2 launch lbr_bringup lbr_epfl.launch.py servo:=false epfl_nodes:=none
 """
 
 from launch import LaunchDescription
@@ -60,7 +60,7 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(
         DeclareLaunchArgument(
             "model",
-            default_value="med14_gepetto",
+            default_value="med14_epfl",
             description="Robot model to use.",
         )
     )
@@ -98,7 +98,7 @@ def generate_launch_description() -> LaunchDescription:
 
     ld.add_action(
         DeclareLaunchArgument(
-            "gepetto_nodes",
+            "epfl_nodes",
             default_value="viz",
             description="Which hand nodes to start. 'sliders' is the open-loop slider "
             "GUI, 'full' is hand_node + state_estimator + planner, 'viz' is the "
@@ -111,7 +111,7 @@ def generate_launch_description() -> LaunchDescription:
             choices=["sliders", "full", "viz", "none"],
         )
     )
-    gepetto_nodes = LaunchConfiguration("gepetto_nodes")
+    epfl_nodes = LaunchConfiguration("epfl_nodes")
 
     ld.add_action(
         DeclareLaunchArgument(
@@ -140,8 +140,8 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument(
             "conda_prefix",
             default_value=[EnvironmentVariable("HOME"), "/miniconda3/envs/crest_py10"],
-            description="Conda env the Gepetto nodes run against. It must provide "
-            "gepetto_core and crest_sparse.",
+            description="Conda env the gepetto_ros nodes run against. It must provide "
+            "epfl_hand_core and crest_sparse.",
         )
     )
     conda_prefix = LaunchConfiguration("conda_prefix")
@@ -206,13 +206,13 @@ def generate_launch_description() -> LaunchDescription:
         )
     )
 
-    # -- gepetto hand nodes -------------------------------------------------
-    # The Gepetto nodes need the conda env that carries gepetto_core and crest_sparse,
-    # while every other node in this launch must keep the system python that rclpy and
-    # MoveIt were built against. So the env goes on the individual nodes via
-    # additional_env rather than through a launch-wide SetEnvironmentVariable, which
-    # would leak conda's site-packages into move_group, servo_node and RViz.
-    gepetto_env = {
+    # -- EPFL hand nodes from gepetto_ros -----------------------------------
+    # The gepetto_ros nodes need the conda env that carries epfl_hand_core and
+    # crest_sparse, while every other node in this launch must keep the system python
+    # that rclpy and MoveIt were built against. So the env goes on the individual nodes
+    # via additional_env rather than through a launch-wide SetEnvironmentVariable,
+    # which would leak conda's site-packages into move_group, servo_node and RViz.
+    gepetto_ros_env = {
         "PYTHONPATH": [
             conda_prefix,
             "/lib/python3.10/site-packages:",
@@ -226,10 +226,10 @@ def generate_launch_description() -> LaunchDescription:
     }
 
     use_sliders = IfCondition(
-        PythonExpression(["'", gepetto_nodes, "' == 'sliders'"])
+        PythonExpression(["'", epfl_nodes, "' == 'sliders'"])
     )
-    use_full = IfCondition(PythonExpression(["'", gepetto_nodes, "' == 'full'"]))
-    use_viz = IfCondition(PythonExpression(["'", gepetto_nodes, "' == 'viz'"]))
+    use_full = IfCondition(PythonExpression(["'", epfl_nodes, "' == 'full'"]))
+    use_viz = IfCondition(PythonExpression(["'", epfl_nodes, "' == 'viz'"]))
 
     ld.add_action(
         Node(
@@ -237,7 +237,7 @@ def generate_launch_description() -> LaunchDescription:
             executable="finger_slider_node",
             name="finger_slider_node",
             output="screen",
-            additional_env=gepetto_env,
+            additional_env=gepetto_ros_env,
             # Substitutions resolve to strings, so each one is typed explicitly;
             # otherwise the node rejects them against its declared parameter types.
             parameters=[
@@ -263,7 +263,7 @@ def generate_launch_description() -> LaunchDescription:
             executable="hand_node",
             name="hand_node",
             output="screen",
-            additional_env=gepetto_env,
+            additional_env=gepetto_ros_env,
             condition=use_full,
         )
     )
@@ -273,7 +273,7 @@ def generate_launch_description() -> LaunchDescription:
             executable="state_estimator",
             name="state_estimator",
             output="screen",
-            additional_env=gepetto_env,
+            additional_env=gepetto_ros_env,
             condition=use_full,
         )
     )
@@ -283,12 +283,12 @@ def generate_launch_description() -> LaunchDescription:
             executable="planner",
             name="planner",
             output="screen",
-            additional_env=gepetto_env,
+            additional_env=gepetto_ros_env,
             condition=use_full,
         )
     )
 
-    # gepetto_nodes:=viz -- the interactive visualizer, its executor, and the
+    # epfl_nodes:=viz -- the interactive visualizer, its executor, and the
     # finger servo, wired to this robot. Pair it with servo:=true: playing a solve
     # publishes Cartesian twists to MoveIt Servo, which only runs in that mode.
     #
@@ -306,7 +306,7 @@ def generate_launch_description() -> LaunchDescription:
             executable="viz_node",
             name="gepetto_viz",
             output="screen",
-            additional_env=gepetto_env,
+            additional_env=gepetto_ros_env,
             condition=use_viz,
         )
     )
@@ -316,7 +316,7 @@ def generate_launch_description() -> LaunchDescription:
             executable="executor_node",
             name="gepetto_executor",
             output="screen",
-            additional_env=gepetto_env,
+            additional_env=gepetto_ros_env,
             condition=use_viz,
         )
     )
@@ -326,7 +326,7 @@ def generate_launch_description() -> LaunchDescription:
             executable="finger_servo_node",
             name="finger_servo_node",
             output="screen",
-            additional_env=gepetto_env,
+            additional_env=gepetto_ros_env,
             parameters=[
                 {
                     "moving_speed": ParameterValue(

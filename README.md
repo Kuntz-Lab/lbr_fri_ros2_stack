@@ -63,11 +63,11 @@ This is the **Kuntz Lab fork** of [lbr-stack/lbr_fri_ros2_stack](https://github.
 | Area | Addition |
 | :--- | :--- |
 | New packages | [`lbr_motion`](lbr_motion/) — MoveIt wrapper action servers, example clients, and servo command publishers.<br>[`lbr_interfaces`](lbr_interfaces/) — `MoveToPose` and `MoveHome` action definitions. |
-| New robot models | [`med14_tc`](lbr_description/urdf/med14_tc/) — med14 + tendon-cube end effector + table.<br>[`med14_robotiq_2f`](lbr_description/urdf/med14_robotiq_2f/) — med14 + adapter + Robotiq 2F-140 gripper + table.<br>[`med14_epfl`](lbr_description/urdf/med14_epfl/) — med14 + table + the epfl hand's wrist frame at the fixed flange↔wrist mount offset. |
+| New robot models | [`med14_tc`](lbr_description/urdf/med14_tc/) — med14 + tendon-cube end effector + table.<br>[`med14_robotiq_2f`](lbr_description/urdf/med14_robotiq_2f/) — med14 + adapter + Robotiq 2F-140 gripper + table.<br>[`med14_epfl`](lbr_description/urdf/med14_epfl/) — med14 + table + the EPFL hand's wrist frame at the fixed flange↔wrist mount offset. |
 | New MoveIt configs | [`med14_tc_moveit_config`](lbr_moveit_config/med14_tc_moveit_config/), [`med14_robotiq_2f_moveit_config`](lbr_moveit_config/med14_robotiq_2f_moveit_config/) (the latter with an `arm` and a `gripper` planning group), [`med14_epfl_moveit_config`](lbr_moveit_config/med14_epfl_moveit_config/). |
 | Combined control | [`lbr_description/ros2_control/combined_controllers.yaml`](lbr_description/ros2_control/combined_controllers.yaml) — LBR controllers plus `robotiq_gripper_controller` and `robotiq_activation_controller` under one controller manager. |
 | New launch files | [`lbr_move_to_pose.launch.py`](lbr_bringup/launch/lbr_move_to_pose.launch.py), [`lbr_and_robotiq_hardware.launch.py`](lbr_bringup/launch/lbr_and_robotiq_hardware.launch.py), [`lbr_servoing.launch.py`](lbr_bringup/launch/lbr_servoing.launch.py), [`lbr_servoing_and_robotiq.launch.py`](lbr_bringup/launch/lbr_servoing_and_robotiq.launch.py), [`lbr_epfl.launch.py`](lbr_bringup/launch/lbr_epfl.launch.py). |
-| epfl hand integration | `med14_epfl` carries the `epfl_hand_core` mount transform as a real URDF frame, and `lbr_epfl.launch.py` brings the arm, RViz, and the [`epfl_ros`](../epfl_ros) hand nodes up together. See [epfl hand bringup](#epfl-hand-bringup). |
+| EPFL hand integration | `med14_epfl` carries the `epfl_hand_core` mount transform as a real URDF frame, and `lbr_epfl.launch.py` brings the arm, RViz, and the [`gepetto_ros`](../gepetto_ros) hand nodes up together. See [EPFL hand bringup](#epfl-hand-bringup). |
 | Modified upstream files | `description.py` (passes `com_port` / `use_fake_hardware` to xacro, adds the new models to `model` choices), `moveit.py` + `move_group.launch.py` (`sensors_3d` / `sensors_3d_config` args and octomap params), `hardware.launch.py` and `mock.launch.py` (gripper-related args), `lbr_system_config.yaml` (FRI 2.6). |
 
 ## Package overview
@@ -198,7 +198,7 @@ All launch files live in [lbr_bringup/launch](lbr_bringup/launch/). Fork additio
 | ★`lbr_and_robotiq_hardware.launch.py` | `hardware.launch.py` + Robotiq gripper/activation controller spawners | `model` (`med14_robotiq_2f`), `robot_name` (`lbr`), `com_port` (`/dev/ttyUSB1`) |
 | ★`lbr_servoing.launch.py` | Mock robot on `forward_position_controller` + MoveIt Servo + RViz | `model` (`med14_robotiq_2f`), `mode` (`mock`), `rviz` (`true`) |
 | ★`lbr_servoing_and_robotiq.launch.py` | Same as above but also spawns the Robotiq controllers in mock mode | `model` (`med14_robotiq_2f`), `mode` (`mock`), `rviz` (`true`) |
-| ★`lbr_epfl.launch.py` | Mock robot on `forward_position_controller` + MoveIt Servo + RViz + the epfl hand nodes | `model` (`med14_epfl`), `mode` (`mock`), `servo` (`true`), `rviz` (`true`), `epfl_nodes` (`viz`), `moving_speed` (`0`), `torque_limit` (`0`), `command_hz` (`20.0`), `conda_prefix` (`~/miniconda3/envs/crest_py10`) |
+| ★`lbr_epfl.launch.py` | Mock robot on `forward_position_controller` + MoveIt Servo + RViz + the EPFL hand nodes | `model` (`med14_epfl`), `mode` (`mock`), `servo` (`true`), `rviz` (`true`), `epfl_nodes` (`viz`), `moving_speed` (`0`), `torque_limit` (`0`), `command_hz` (`20.0`), `conda_prefix` (`~/miniconda3/envs/crest_py10`) |
 
 Notes on the fork launch files:
 
@@ -294,15 +294,19 @@ ros2 action send_goal /move_to_home lbr_interfaces/action/MoveHome \
 "{vel_scaling: 0.1, acc_scaling: 0.1, planning_group: arm}"
 ```
 
-## epfl hand bringup
+## EPFL hand bringup
 
-`med14_epfl` is the join between this stack and the [`epfl_ros`](../epfl_ros) /
-[`epfl_hand_core`](../epfl_hand_core) tendon-driven hand. It adds one frame,
-`lbr_epfl_wrist_link`, fixed to `lbr_link_ee` at the measured mount offset:
+`med14_epfl` is the join between this stack and the [`gepetto_ros`](../gepetto_ros) /
+[`epfl_hand_core`](../epfl_hand_core) tendon-driven hand. Its primary wrist frame,
+`lbr_epfl_wrist_link`, is fixed to `lbr_link_ee` at the measured mount offset:
 
 ```xml
 <origin xyz="-0.009490 -0.010641 0.139688" rpy="1.570796 0.174533 -1.570796" />
 ```
+
+The description also publishes `lbr_gepetto_wrist_link` as a zero-offset compatibility
+alias because the unchanged `gepetto_ros` nodes still resolve that established frame.
+New LBR and MoveIt integrations should use `lbr_epfl_wrist_link`.
 
 Those numbers are `MountConfig.flange_from_wrist_xyz` / `_rpy` from
 [epfl_hand_core/src/epfl_hand_core/config.py](../epfl_hand_core/src/epfl_hand_core/config.py), copied
@@ -338,14 +342,14 @@ it with a dry-run hand:
 ```shell
 ros2 launch lbr_bringup lbr_epfl.launch.py epfl_nodes:=none
 # then, in other terminals
-ros2 run epfl_hardware finger_servo_node --ros-args -p dry_run:=true
-ros2 run lbr_motion twist_servo_pub          # or: ros2 run epfl_control home_node
+ros2 run gepetto_hardware finger_servo_node --ros-args -p dry_run:=true
+ros2 run lbr_motion twist_servo_pub          # or: ros2 run gepetto_control home_node
 ```
 
 | Argument | Default | Meaning |
 | :--- | :--- | :--- |
 | `servo` | `true` | `forward_position_controller` + MoveIt Servo, which is what `viz_node`, `home_node` and `lbr_motion`'s `*_servo_pub` all command. `servo:=false` falls back to `joint_trajectory_controller`; the MoveIt include is condition-gated, so that mode does not need MoveIt installed. |
-| `epfl_nodes` | `viz` | `viz` = `viz_node` + `finger_servo_node`; `sliders` = `finger_slider_node` only; `full` = `hand_node` + `state_estimator` + `planner`; `none` = arm only. |
+| `epfl_nodes` | `viz` | `viz` = `viz_node` + `executor_node` + `finger_servo_node`; `sliders` = `finger_slider_node` only; `full` = `hand_node` + `state_estimator` + `planner`; `none` = arm only. |
 | `conda_prefix` | `~/miniconda3/envs/crest_py10` | Env supplying `epfl_hand_core` and `crest_sparse` to the hand nodes. |
 | `moving_speed`, `torque_limit`, `command_hz` | `0`, `0`, `20.0` | Passed to the hand nodes; `0` keeps the `HandConfig` default. |
 
@@ -354,7 +358,7 @@ ros2 run lbr_motion twist_servo_pub          # or: ros2 run epfl_control home_no
 time.
 
 The conda environment is applied per-node via `additional_env` rather than a launch-wide
-`SetEnvironmentVariable` (which is what the launch files in `epfl_launch` do). That keeps
+`SetEnvironmentVariable` (which is what the launch files in `gepetto_launch` do). That keeps
 conda's `site-packages` out of `move_group`, `servo_node`, `ros2_control_node`, and RViz, which
 must keep the system python they were built against.
 
@@ -364,10 +368,10 @@ Servoing jogs the robot continuously instead of planning point-to-point motions.
 
 As long as something is publishing on the servo topics, the robot jogs; when publishing stops, it stops.
 
-### epfl hand (`med14_epfl`)
+### EPFL hand (`med14_epfl`)
 
 For simulation, launch the complete servoing stack on the perception PC. This starts the mock
-robot with the epfl wrist model, `forward_position_controller`, MoveIt Servo, and RViz:
+robot with the EPFL wrist model, `forward_position_controller`, MoveIt Servo, and RViz:
 
 ```shell
 ros2 launch lbr_bringup lbr_servoing.launch.py model:=med14_epfl
