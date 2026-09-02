@@ -4,6 +4,6 @@ from moveit_configs_utils.launches import generate_setup_assistant_launch
 
 def generate_launch_description():
     moveit_config = MoveItConfigsBuilder(
-        "med14_gepetto", package_name="med14_gepetto_moveit_config"
+        "med14_epfl", package_name="med14_epfl_moveit_config"
     ).to_moveit_configs()
     return generate_setup_assistant_launch(moveit_config)

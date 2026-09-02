@@ -8,7 +8,7 @@
     <xacro:include filename="$(find lbr_description)/urdf/med14_allegro/allegro_mount_description.xacro" />
     <xacro:include filename="$(find lbr_description)/urdf/med14_allegro/common_properties.xacro" />
     <xacro:include filename="$(find lbr_description)/urdf/med14_allegro/table_description.xacro" />
-    <xacro:include filename="$(find lbr_description)/urdf/med14_gepetto/workspace_table_description.xacro" />
+    <xacro:include filename="$(find lbr_description)/urdf/med14_epfl/workspace_table_description.xacro" />
 
     <!-- the hand itself lives in the allegro repo, so there is one model shared by this
          mounted setup and by the standalone allegro_hand.launch.py bringup -->

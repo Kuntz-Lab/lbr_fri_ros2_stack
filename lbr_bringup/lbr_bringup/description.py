@@ -83,7 +83,7 @@ class LBRDescriptionMixin:
                 "med14",
                 "med14_tc",
                 "med14_robotiq_2f",
-                "med14_gepetto",
+                "med14_epfl",
                 "med14_allegro",
             ],
         )

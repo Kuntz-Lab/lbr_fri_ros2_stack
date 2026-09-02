@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(med14_gepetto_moveit_config)
+project(med14_epfl_moveit_config)
 
 find_package(ament_cmake REQUIRED)
 

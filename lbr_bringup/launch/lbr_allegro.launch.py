@@ -13,7 +13,7 @@ description, ros2_control and the arm controllers come from the robot PC, which 
 on its own -- hardware.launch.py opens the FRI connection and must live next to the
 controller, so it is deliberately NOT included from here. Start it there first, then start
 this launch. (mode:=mock and mode:=gazebo do include mock.launch.py, since there is no
-robot PC in those cases.) This matches lbr_gepetto.launch.py.
+robot PC in those cases.) This matches lbr_epfl.launch.py.
 
 Use ctrl:=joint_trajectory_controller on the robot PC instead if you launch this with
 servo:=false; the two controllers claim the same interfaces and are mutually exclusive.

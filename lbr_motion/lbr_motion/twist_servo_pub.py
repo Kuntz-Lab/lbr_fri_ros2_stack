@@ -34,7 +34,7 @@ class TwistServoPublisher(Node): # MODIFY NAME
         #
         # The frame_id above is only the reference frame the components are expressed in.
         # The point being servoed is the SRDF chain tip of group "arm"
-        # (lbr_gepetto_wrist_link, see med14_gepetto.srdf) -- rotations pivot about that
+        # (lbr_epfl_wrist_link, see med14_epfl.srdf) -- rotations pivot about that
         # link's origin, not about whatever frame_id names.
         msg.twist.linear.x = 0.0
         msg.twist.linear.y = 0.0

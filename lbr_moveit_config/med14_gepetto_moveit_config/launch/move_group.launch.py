@@ -7,11 +7,11 @@ from moveit_configs_utils.launches import generate_move_group_launch
 
 def generate_launch_description():
     moveit_config = (
-        MoveItConfigsBuilder("med14_gepetto", package_name="med14_gepetto_moveit_config")
+        MoveItConfigsBuilder("med14_epfl", package_name="med14_epfl_moveit_config")
         .robot_description(
             os.path.join(
                 get_package_share_directory("lbr_description"),
-                "urdf/med14_gepetto/med14_gepetto.xacro",
+                "urdf/med14_epfl/med14_epfl.xacro",
             )
         )
         .to_moveit_configs()

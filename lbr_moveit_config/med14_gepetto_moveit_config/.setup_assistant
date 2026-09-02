@@ -1,9 +1,9 @@
 moveit_setup_assistant_config:
   urdf:
     package: lbr_description
-    relative_path: urdf/med14_gepetto/med14_gepetto.xacro 
+    relative_path: urdf/med14_epfl/med14_epfl.xacro 
   srdf:
-    relative_path: config/med14_gepetto.srdf
+    relative_path: config/med14_epfl.srdf
   package_settings:
     author_name: mhubii
     author_email: m.huber_1994@hotmail.de
