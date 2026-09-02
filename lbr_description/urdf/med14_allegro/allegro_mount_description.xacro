@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<robot name="allegro_mount" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!--
+        The spacer between the med14 flange and the Allegro hand's mounting face.
+
+        A plain 35 mm standoff: it introduces no rotation, so the hand's z axis stays
+        parallel to the flange z axis and the mount contributes nothing but translation.
+        Modelled with both <visual> and <collision>, like the robotiq adapter, since a
+        35 mm cylinder in front of the flange is a real obstacle worth having in the
+        planning scene.
+    -->
+    <xacro:macro name="allegro_mount_description" params="parent_link robot_name">
+
+        <!-- the 35 mm; the only number in this file that describes the real part -->
+        <xacro:property name="mount_height" value="0.035" />
+        <xacro:property name="mount_radius" value="0.0375" />
+
+        <link name="${robot_name}_allegro_mount_link">
+            <visual>
+                <geometry>
+                    <cylinder radius="${mount_radius}" length="${mount_height}" />
+                </geometry>
+                <origin xyz="0 0 ${-mount_height/2}" rpy="0 0 0" />
+                <material name="grey" />
+            </visual>
+            <collision>
+                <geometry>
+                    <cylinder radius="${mount_radius}" length="${mount_height}" />
+                </geometry>
+                <origin xyz="0 0 ${-mount_height/2}" rpy="0 0 0" />
+            </collision>
+        </link>
+
+        <joint name="${robot_name}_allegro_mount_joint" type="fixed">
+            <parent link="${parent_link}" />
+            <child link="${robot_name}_allegro_mount_link" />
+            <origin xyz="0 0 ${mount_height}" rpy="0 0 0" />
+        </joint>
+
+    </xacro:macro>
+
+</robot>

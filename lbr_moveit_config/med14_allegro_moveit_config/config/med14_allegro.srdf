@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This does not replace URDF, and is not an extension of URDF.
+    This is a format for representing semantic information about the robot structure.
+    A URDF file must exist for this robot as well, where the joints and the links that are referenced are defined
+-->
+<robot name="med14_allegro">
+    <!--GROUPS: Representation of a set of joints and links. This can be useful for specifying DOF to plan for, defining arms, end effectors, etc-->
+    <!--LINKS: When a link is specified, the parent joint of that link (if it exists) is automatically included-->
+    <!--JOINTS: When a joint is specified, the child link of that joint (which will always exist) is automatically included-->
+    <!--CHAINS: When a chain is specified, all the links along the chain (including endpoints) are included in the group. Additionally, all the joints that are parents to included links are also included. This means that joints along the chain and the parent joint of the base link are included in the group-->
+    <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
+
+    <!--
+        The chain tips at palm_link, so MoveIt Servo's Jacobian point is the hand rather
+        than the bare flange and a commanded twist moves the palm. Everything between
+        lbr_link_ee and palm_link is fixed, so this still has exactly the 7 arm DOF.
+
+        There is deliberately no group for the 16 finger joints. The hand is driven by
+        allegro_node_grasp over its own joint_cmd topic, not through move_group, and a
+        group with no controller behind it only makes move_group warn. The finger links
+        still take part in collision checking regardless of group membership - which is
+        why every Allegro self-collision pair is copied in below.
+    -->
+    <group name="arm">
+        <chain base_link="lbr_link_0" tip_link="palm_link"/>
+    </group>
+    <!--GROUP STATES: Purpose: Define a named state for a particular group, in terms of joint values. This is useful to define states like 'folded arms'-->
+    <group_state name="zero" group="arm">
+        <joint name="lbr_A1" value="0"/>
+        <joint name="lbr_A2" value="0"/>
+        <joint name="lbr_A3" value="0"/>
+        <joint name="lbr_A4" value="0"/>
+        <joint name="lbr_A5" value="0"/>
+        <joint name="lbr_A6" value="0"/>
+        <joint name="lbr_A7" value="0"/>
+    </group_state>
+    <group_state name="transport" group="arm">
+        <joint name="lbr_A1" value="0"/>
+        <joint name="lbr_A2" value="0.4363"/>
+        <joint name="lbr_A3" value="0"/>
+        <joint name="lbr_A4" value="1.5707"/>
+        <joint name="lbr_A5" value="0"/>
+        <joint name="lbr_A6" value="0"/>
+        <joint name="lbr_A7" value="0"/>
+    </group_state>
+    <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
+    <disable_collisions link1="lbr_link_0" link2="lbr_link_1" reason="Adjacent"/>
+    <disable_collisions link1="lbr_link_0" link2="lbr_link_2" reason="Never"/>
+    <disable_collisions link1="lbr_link_0" link2="lbr_link_3" reason="Never"/>
+    <disable_collisions link1="lbr_link_0" link2="lbr_link_4" reason="Never"/>
+    <disable_collisions link1="lbr_link_1" link2="lbr_link_2" reason="Adjacent"/>
+    <disable_collisions link1="lbr_link_1" link2="lbr_link_3" reason="Never"/>
+    <disable_collisions link1="lbr_link_1" link2="lbr_link_4" reason="Never"/>
+    <disable_collisions link1="lbr_link_1" link2="lbr_link_5" reason="Never"/>
+    <disable_collisions link1="lbr_link_1" link2="lbr_link_6" reason="Never"/>
+    <disable_collisions link1="lbr_link_1" link2="lbr_link_7" reason="Never"/>
+    <disable_collisions link1="lbr_link_2" link2="lbr_link_3" reason="Adjacent"/>
+    <disable_collisions link1="lbr_link_2" link2="lbr_link_4" reason="Never"/>
+    <disable_collisions link1="lbr_link_2" link2="lbr_link_5" reason="Never"/>
+    <disable_collisions link1="lbr_link_2" link2="lbr_link_6" reason="Never"/>
+    <disable_collisions link1="lbr_link_2" link2="lbr_link_7" reason="Never"/>
+    <disable_collisions link1="lbr_link_3" link2="lbr_link_4" reason="Adjacent"/>
+    <disable_collisions link1="lbr_link_3" link2="lbr_link_5" reason="Never"/>
+    <disable_collisions link1="lbr_link_3" link2="lbr_link_6" reason="Never"/>
+    <disable_collisions link1="lbr_link_3" link2="lbr_link_7" reason="Never"/>
+    <disable_collisions link1="lbr_link_4" link2="lbr_link_5" reason="Adjacent"/>
+    <disable_collisions link1="lbr_link_4" link2="lbr_link_6" reason="Never"/>
+    <disable_collisions link1="lbr_link_4" link2="lbr_link_7" reason="Never"/>
+    <disable_collisions link1="lbr_link_5" link2="lbr_link_6" reason="Adjacent"/>
+    <disable_collisions link1="lbr_link_5" link2="lbr_link_7" reason="Never"/>
+    <disable_collisions link1="lbr_link_6" link2="lbr_link_7" reason="Adjacent"/>
+    <disable_collisions link1="lbr_table_link" link2="lbr_link_0" reason="Adjacent"/>
+    <disable_collisions link1="lbr_table_link" link2="lbr_link_1" reason="Never"/>
+    <disable_collisions link1="lbr_table_link" link2="lbr_link_2" reason="Never"/>
+    <disable_collisions link1="lbr_table_link" link2="lbr_floating_link" reason="Never"/>
+    <!-- Collision entries for the 35 mm mount and the hand where it meets the arm -->
+    <disable_collisions link1="lbr_link_7" link2="lbr_allegro_mount_link" reason="Never"/>
+    <disable_collisions link1="lbr_link_ee" link2="lbr_allegro_mount_link" reason="Adjacent"/>
+    <disable_collisions link1="lbr_allegro_mount_link" link2="palm_link" reason="Adjacent"/>
+    <disable_collisions link1="lbr_link_7" link2="palm_link" reason="Never"/>
+    <disable_collisions link1="lbr_link_ee" link2="palm_link" reason="Never"/>
+    <!--
+        The thumb base sits permanently ~11 mm from the mount cylinder and stays inside
+        Servo's proximity band without ever being able to touch it: sweeping all four
+        thumb joints across their full URDF limits (625 sampled configurations) the
+        closest approach of any thumb link to lbr_allegro_mount_link is 6.0 mm, at
+        joint_12_0 = 1.78 (its upper limit). Re-check this if the mount geometry changes.
+    -->
+    <disable_collisions link1="lbr_allegro_mount_link" link2="link_12_0" reason="Never"/>
+    <!--
+        Allegro hand self-collision matrix, copied verbatim from
+        allegro_hand_ros2_v5/allegro_hand_moveit/config/allegro_hand.srdf. Servo runs with
+        check_collisions: true, and without these the hand reports self-collisions at rest.
+    -->
+    <disable_collisions link1="link_0_0" link2="link_10_0" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="link_11_0" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="link_11_0_tip" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="link_12_0" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="link_13_0" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="link_14_0" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="link_1_0" reason="Adjacent"/>
+    <disable_collisions link1="link_0_0" link2="link_2_0" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="link_3_0" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="link_4_0" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="link_6_0" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="link_7_0" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="link_7_0_tip" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="link_9_0" reason="Never"/>
+    <disable_collisions link1="link_0_0" link2="palm_link" reason="Adjacent"/>
+    <disable_collisions link1="link_10_0" link2="link_11_0" reason="Adjacent"/>
+    <disable_collisions link1="link_10_0" link2="link_11_0_tip" reason="Never"/>
+    <disable_collisions link1="link_10_0" link2="link_12_0" reason="Never"/>
+    <disable_collisions link1="link_10_0" link2="link_13_0" reason="Never"/>
+    <disable_collisions link1="link_10_0" link2="link_14_0" reason="Never"/>
+    <disable_collisions link1="link_10_0" link2="link_4_0" reason="Never"/>
+    <disable_collisions link1="link_10_0" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_10_0" link2="link_9_0" reason="Adjacent"/>
+    <disable_collisions link1="link_10_0" link2="palm_link" reason="Never"/>
+    <disable_collisions link1="link_11_0" link2="link_11_0_tip" reason="Adjacent"/>
+    <disable_collisions link1="link_11_0" link2="link_12_0" reason="Never"/>
+    <disable_collisions link1="link_11_0" link2="link_13_0" reason="Never"/>
+    <disable_collisions link1="link_11_0" link2="link_4_0" reason="Never"/>
+    <disable_collisions link1="link_11_0" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_11_0" link2="link_9_0" reason="Never"/>
+    <disable_collisions link1="link_11_0_tip" link2="link_12_0" reason="Never"/>
+    <disable_collisions link1="link_11_0_tip" link2="link_1_0" reason="Never"/>
+    <disable_collisions link1="link_11_0_tip" link2="link_4_0" reason="Never"/>
+    <disable_collisions link1="link_11_0_tip" link2="link_9_0" reason="Never"/>
+    <disable_collisions link1="link_12_0" link2="link_13_0" reason="Adjacent"/>
+    <disable_collisions link1="link_12_0" link2="link_14_0" reason="Never"/>
+    <disable_collisions link1="link_12_0" link2="link_1_0" reason="Never"/>
+    <disable_collisions link1="link_12_0" link2="link_2_0" reason="Never"/>
+    <disable_collisions link1="link_12_0" link2="link_4_0" reason="Never"/>
+    <disable_collisions link1="link_12_0" link2="link_5_0" reason="Never"/>
+    <disable_collisions link1="link_12_0" link2="link_6_0" reason="Never"/>
+    <disable_collisions link1="link_12_0" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_12_0" link2="link_9_0" reason="Never"/>
+    <disable_collisions link1="link_12_0" link2="palm_link" reason="Adjacent"/>
+    <disable_collisions link1="link_13_0" link2="link_14_0" reason="Adjacent"/>
+    <disable_collisions link1="link_13_0" link2="link_15_0" reason="Never"/>
+    <disable_collisions link1="link_13_0" link2="link_15_0_tip" reason="Never"/>
+    <disable_collisions link1="link_13_0" link2="link_1_0" reason="Never"/>
+    <disable_collisions link1="link_13_0" link2="link_2_0" reason="Never"/>
+    <disable_collisions link1="link_13_0" link2="link_4_0" reason="Never"/>
+    <disable_collisions link1="link_13_0" link2="link_5_0" reason="Never"/>
+    <disable_collisions link1="link_13_0" link2="link_6_0" reason="Never"/>
+    <disable_collisions link1="link_13_0" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_13_0" link2="link_9_0" reason="Never"/>
+    <disable_collisions link1="link_13_0" link2="palm_link" reason="Never"/>
+    <disable_collisions link1="link_14_0" link2="link_15_0" reason="Adjacent"/>
+    <disable_collisions link1="link_14_0" link2="link_15_0_tip" reason="Never"/>
+    <disable_collisions link1="link_14_0" link2="link_1_0" reason="Never"/>
+    <disable_collisions link1="link_14_0" link2="link_4_0" reason="Never"/>
+    <disable_collisions link1="link_14_0" link2="link_5_0" reason="Never"/>
+    <disable_collisions link1="link_14_0" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_14_0" link2="link_9_0" reason="Never"/>
+    <disable_collisions link1="link_14_0" link2="palm_link" reason="Never"/>
+    <disable_collisions link1="link_15_0" link2="link_15_0_tip" reason="Adjacent"/>
+    <disable_collisions link1="link_15_0" link2="link_4_0" reason="Never"/>
+    <disable_collisions link1="link_15_0" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_15_0" link2="link_9_0" reason="Never"/>
+    <disable_collisions link1="link_1_0" link2="link_2_0" reason="Adjacent"/>
+    <disable_collisions link1="link_1_0" link2="link_3_0" reason="Never"/>
+    <disable_collisions link1="link_1_0" link2="link_3_0_tip" reason="Never"/>
+    <disable_collisions link1="link_1_0" link2="link_4_0" reason="Never"/>
+    <disable_collisions link1="link_1_0" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_1_0" link2="link_9_0" reason="Never"/>
+    <disable_collisions link1="link_1_0" link2="palm_link" reason="Never"/>
+    <disable_collisions link1="link_2_0" link2="link_3_0" reason="Adjacent"/>
+    <disable_collisions link1="link_2_0" link2="link_3_0_tip" reason="Never"/>
+    <disable_collisions link1="link_2_0" link2="link_4_0" reason="Never"/>
+    <disable_collisions link1="link_2_0" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_2_0" link2="palm_link" reason="Never"/>
+    <disable_collisions link1="link_3_0" link2="link_3_0_tip" reason="Adjacent"/>
+    <disable_collisions link1="link_3_0" link2="link_4_0" reason="Never"/>
+    <disable_collisions link1="link_3_0" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_3_0_tip" link2="link_4_0" reason="Never"/>
+    <disable_collisions link1="link_3_0_tip" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_3_0_tip" link2="link_9_0" reason="Never"/>
+    <disable_collisions link1="link_4_0" link2="link_5_0" reason="Adjacent"/>
+    <disable_collisions link1="link_4_0" link2="link_6_0" reason="Never"/>
+    <disable_collisions link1="link_4_0" link2="link_7_0" reason="Never"/>
+    <disable_collisions link1="link_4_0" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_4_0" link2="link_9_0" reason="Never"/>
+    <disable_collisions link1="link_4_0" link2="palm_link" reason="Adjacent"/>
+    <disable_collisions link1="link_5_0" link2="link_6_0" reason="Adjacent"/>
+    <disable_collisions link1="link_5_0" link2="link_7_0" reason="Never"/>
+    <disable_collisions link1="link_5_0" link2="link_7_0_tip" reason="Never"/>
+    <disable_collisions link1="link_5_0" link2="palm_link" reason="Never"/>
+    <disable_collisions link1="link_6_0" link2="link_7_0" reason="Adjacent"/>
+    <disable_collisions link1="link_6_0" link2="link_7_0_tip" reason="Never"/>
+    <disable_collisions link1="link_6_0" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_6_0" link2="palm_link" reason="Never"/>
+    <disable_collisions link1="link_7_0" link2="link_7_0_tip" reason="Adjacent"/>
+    <disable_collisions link1="link_7_0" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_7_0_tip" link2="link_8_0" reason="Never"/>
+    <disable_collisions link1="link_8_0" link2="link_9_0" reason="Adjacent"/>
+    <disable_collisions link1="link_8_0" link2="palm_link" reason="Adjacent"/>
+    <disable_collisions link1="link_9_0" link2="palm_link" reason="Never"/>
+</robot>

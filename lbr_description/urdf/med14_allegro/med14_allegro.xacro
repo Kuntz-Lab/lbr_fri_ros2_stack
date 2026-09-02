@@ -1,0 +1,86 @@
+<?xml version="1.0"?>
+
+<!-- top level -->
+<robot name="med14_allegro" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- include the lbr med macro -->
+    <xacro:include filename="$(find lbr_description)/urdf/med14/med14_description.xacro" />
+    <xacro:include filename="$(find lbr_description)/urdf/med14_allegro/allegro_mount_description.xacro" />
+    <xacro:include filename="$(find lbr_description)/urdf/med14_allegro/common_properties.xacro" />
+    <xacro:include filename="$(find lbr_description)/urdf/med14_allegro/table_description.xacro" />
+
+    <!-- the hand itself lives in the allegro repo, so there is one model shared by this
+         mounted setup and by the standalone allegro_hand.launch.py bringup -->
+    <xacro:include filename="$(find allegro_hand_controllers)/urdf/allegro_hand_right_B_macro.xacro" />
+
+    <xacro:arg name="robot_name" default="lbr" />
+    <xacro:arg name="mode" default="true" />
+    <xacro:arg
+        name="system_config_path"
+        default="$(find lbr_description)/ros2_control/lbr_system_config.yaml" />
+
+    <!-- declared so the launch mixin can always pass them; unused by this model. The
+         Allegro hand is driven by allegro_node_grasp over CAN, alongside ros2_control
+         rather than inside it, so there is no fake-hardware or serial-port switch here. -->
+    <xacro:arg name="use_fake_hardware" default="true" />
+    <xacro:arg name="com_port" default="/dev/ttyUSB1" />
+
+    <!-- KDL requires a link without inertia -->
+    <link name="$(arg robot_name)_floating_link" />
+
+    <!--joint between <robot_name>_floating_link and robot_name_link_0-->
+    <joint name="$(arg robot_name)_floating_joint" type="fixed">
+        <parent link="$(arg robot_name)_floating_link" />
+        <child link="$(arg robot_name)_link_0" />
+    </joint>
+
+    <!-- instantiate robot -->
+    <xacro:med14
+        robot_name="$(arg robot_name)"
+        mode="$(arg mode)"
+        system_config_path="$(arg system_config_path)" />
+
+    <!-- attach the 35 mm mount to the flange -->
+    <xacro:allegro_mount_description
+        parent_link="$(arg robot_name)_link_ee"
+        robot_name="$(arg robot_name)" />
+
+    <!--
+        Attach the Allegro hand to the far face of the mount.
+
+        The offset stack from the flange to palm_link is
+
+            lbr_link_ee            +0.035  the mount spacer (allegro_mount_description)
+            ..._allegro_mount_link +0.095  the palm body, below
+            palm_link                      fingers extend +z from here
+                                   ======
+                                    0.130  net, with identity rotation
+
+        The 0.095 is the hand's own mounting face -> palm_link distance. palm_link is at
+        the FINGER end of the palm, not at the wrist: the palm mesh spans z in
+        [-0.102, -0.002] in palm_link coordinates, and the original Allegro URDF shipped
+        a commented-out `<origin xyz="0 0 0.095">` on its world -> palm_link joint saying
+        the same thing.
+
+        WARNING: 0.095 is read off the mesh and that commented-out line, not off a CAD
+        drawing. Only the 0.035 above is a measured property of the real mount. Check it
+        before trusting the model near the workspace:
+
+            ros2 run tf2_ros tf2_echo lbr_link_ee palm_link   # expect 0 0 0.130, no rotation
+
+        and eyeball RViz for a gap or interpenetration at the flange. If it is wrong, this
+        origin is the single number to correct.
+
+        Joint names inside the macro are unprefixed (joint_0_0 ... joint_15_0) because
+        allegro_node hardcodes them; they do not collide with lbr_A1..A7.
+    -->
+    <xacro:allegro_hand_right_B parent="$(arg robot_name)_allegro_mount_link">
+        <origin xyz="0 0 0.095" rpy="0 0 0" />
+    </xacro:allegro_hand_right_B>
+
+    <!-- attach table to robot base -->
+    <xacro:table_description
+        parent_link="$(arg robot_name)_link_0"
+        robot_name="$(arg robot_name)" />
+
+</robot>
