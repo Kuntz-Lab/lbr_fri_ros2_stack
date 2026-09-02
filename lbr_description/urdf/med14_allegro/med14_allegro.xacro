@@ -8,6 +8,7 @@
     <xacro:include filename="$(find lbr_description)/urdf/med14_allegro/allegro_mount_description.xacro" />
     <xacro:include filename="$(find lbr_description)/urdf/med14_allegro/common_properties.xacro" />
     <xacro:include filename="$(find lbr_description)/urdf/med14_allegro/table_description.xacro" />
+    <xacro:include filename="$(find lbr_description)/urdf/med14_gepetto/workspace_table_description.xacro" />
 
     <!-- the hand itself lives in the allegro repo, so there is one model shared by this
          mounted setup and by the standalone allegro_hand.launch.py bringup -->
@@ -80,6 +81,11 @@
 
     <!-- attach table to robot base -->
     <xacro:table_description
+        parent_link="$(arg robot_name)_link_0"
+        robot_name="$(arg robot_name)" />
+
+    <!-- attach workspace table to robot base -->
+    <xacro:workspace_table_description
         parent_link="$(arg robot_name)_link_0"
         robot_name="$(arg robot_name)" />
 

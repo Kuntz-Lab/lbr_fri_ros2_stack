@@ -73,6 +73,10 @@
     <disable_collisions link1="lbr_table_link" link2="lbr_link_1" reason="Never"/>
     <disable_collisions link1="lbr_table_link" link2="lbr_link_2" reason="Never"/>
     <disable_collisions link1="lbr_table_link" link2="lbr_floating_link" reason="Never"/>
+    <!-- Collision entries for the workspace table -->
+    <disable_collisions link1="lbr_workspace_table_link" link2="lbr_link_0" reason="Adjacent"/>
+    <disable_collisions link1="lbr_workspace_table_link" link2="lbr_table_link" reason="Never"/>
+    <disable_collisions link1="lbr_workspace_table_link" link2="lbr_floating_link" reason="Never"/>
     <!-- Collision entries for the 35 mm mount and the hand where it meets the arm -->
     <disable_collisions link1="lbr_link_7" link2="lbr_allegro_mount_link" reason="Never"/>
     <disable_collisions link1="lbr_link_ee" link2="lbr_allegro_mount_link" reason="Adjacent"/>
