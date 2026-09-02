@@ -1,8 +1,22 @@
 """Combined bringup for the med14 + Allegro Hand (right, geared/type B).
 
-Brings up the `med14_allegro` description (the arm, its table, the 35 mm flange mount and
-the full 16-DOF hand), RViz, MoveIt Servo, and the Allegro hand node in one shot, so both
+Brings up RViz, MoveIt Servo and the Allegro hand node against the `med14_allegro`
+description (the arm, its table, the 35 mm flange mount and the full 16-DOF hand), so both
 the arm and the hand can be streamed commands at the same time.
+
+WHAT THIS LAUNCH DOES NOT DO: with mode:=hardware it does not start the arm. The
+description, ros2_control and the arm controllers come from the robot PC, which runs
+
+    ros2 launch lbr_bringup hardware.launch.py model:=med14_allegro \
+        ctrl:=forward_position_controller
+
+on its own -- hardware.launch.py opens the FRI connection and must live next to the
+controller, so it is deliberately NOT included from here. Start it there first, then start
+this launch. (mode:=mock and mode:=gazebo do include mock.launch.py, since there is no
+robot PC in those cases.) This matches lbr_gepetto.launch.py.
+
+Use ctrl:=joint_trajectory_controller on the robot PC instead if you launch this with
+servo:=false; the two controllers claim the same interfaces and are mutually exclusive.
 
 Two independent command paths, both continuous:
 
@@ -44,7 +58,7 @@ Examples:
     # node. Same command topics as the real thing.
     ros2 launch lbr_bringup lbr_allegro.launch.py
 
-    # the real cell
+    # the real cell -- AFTER hardware.launch.py is already up on the robot PC
     ros2 launch lbr_bringup lbr_allegro.launch.py mode:=hardware
 
     # real arm, no hand plugged in
@@ -175,6 +189,9 @@ def generate_launch_description() -> LaunchDescription:
         ]
     )
 
+    # In hardware mode the description and controllers come from the robot PC, which runs
+    # hardware.launch.py itself; see this file's docstring. So only mock/gazebo bring up an
+    # arm stack here.
     ld.add_action(
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
@@ -189,23 +206,6 @@ def generate_launch_description() -> LaunchDescription:
                     ["'", mode, "' == 'mock' or '", mode, "' == 'gazebo'"]
                 )
             ),
-        )
-    )
-
-    ld.add_action(
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
-                [
-                    PathJoinSubstitution(
-                        [lbr_bringup_path, "launch", "hardware.launch.py"]
-                    )
-                ]
-            ),
-            launch_arguments={
-                "model": model,
-                "ctrl": ctrl,
-            }.items(),
-            condition=IfCondition(PythonExpression(["'", mode, "' == 'hardware'"])),
         )
     )
 
