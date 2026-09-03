@@ -2,7 +2,7 @@
 
 Brings up the `med14_epfl` description (the arm, its table, and the hand's wrist
 frame at the fixed flange->wrist mount offset), RViz, and the EPFL hand nodes from
-`gepetto_ros` in one shot.
+`epfl_hand_ros` in one shot.
 
 Two modes of arm control, selected by `servo`:
 
@@ -27,7 +27,7 @@ Examples:
     ros2 launch lbr_bringup lbr_epfl.launch.py
 
     # arm only, for driving Servo by hand or for pairing with a dry_run hand:
-    #   ros2 run gepetto_hardware finger_servo_node --ros-args -p dry_run:=true
+    #   ros2 run epfl_hand_hardware finger_servo_node --ros-args -p dry_run:=true
     #   ros2 run lbr_motion twist_servo_pub
     ros2 launch lbr_bringup lbr_epfl.launch.py epfl_nodes:=none
 
@@ -140,7 +140,7 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument(
             "conda_prefix",
             default_value=[EnvironmentVariable("HOME"), "/miniconda3/envs/crest_py10"],
-            description="Conda env the gepetto_ros nodes run against. It must provide "
+            description="Conda env the epfl_hand_ros nodes run against. It must provide "
             "epfl_hand_core and crest_sparse.",
         )
     )
@@ -206,13 +206,13 @@ def generate_launch_description() -> LaunchDescription:
         )
     )
 
-    # -- EPFL hand nodes from gepetto_ros -----------------------------------
-    # The gepetto_ros nodes need the conda env that carries epfl_hand_core and
+    # -- EPFL hand nodes from epfl_hand_ros -----------------------------------
+    # The epfl_hand_ros nodes need the conda env that carries epfl_hand_core and
     # crest_sparse, while every other node in this launch must keep the system python
     # that rclpy and MoveIt were built against. So the env goes on the individual nodes
     # via additional_env rather than through a launch-wide SetEnvironmentVariable,
     # which would leak conda's site-packages into move_group, servo_node and RViz.
-    gepetto_ros_env = {
+    epfl_hand_ros_env = {
         "PYTHONPATH": [
             conda_prefix,
             "/lib/python3.10/site-packages:",
@@ -233,11 +233,11 @@ def generate_launch_description() -> LaunchDescription:
 
     ld.add_action(
         Node(
-            package="gepetto_hardware",
+            package="epfl_hand_hardware",
             executable="finger_slider_node",
             name="finger_slider_node",
             output="screen",
-            additional_env=gepetto_ros_env,
+            additional_env=epfl_hand_ros_env,
             # Substitutions resolve to strings, so each one is typed explicitly;
             # otherwise the node rejects them against its declared parameter types.
             parameters=[
@@ -259,31 +259,31 @@ def generate_launch_description() -> LaunchDescription:
 
     ld.add_action(
         Node(
-            package="gepetto_hardware",
+            package="epfl_hand_hardware",
             executable="hand_node",
             name="hand_node",
             output="screen",
-            additional_env=gepetto_ros_env,
+            additional_env=epfl_hand_ros_env,
             condition=use_full,
         )
     )
     ld.add_action(
         Node(
-            package="gepetto_control",
+            package="epfl_hand_control",
             executable="state_estimator",
             name="state_estimator",
             output="screen",
-            additional_env=gepetto_ros_env,
+            additional_env=epfl_hand_ros_env,
             condition=use_full,
         )
     )
     ld.add_action(
         Node(
-            package="gepetto_control",
+            package="epfl_hand_control",
             executable="planner",
             name="planner",
             output="screen",
-            additional_env=gepetto_ros_env,
+            additional_env=epfl_hand_ros_env,
             condition=use_full,
         )
     )
@@ -296,37 +296,37 @@ def generate_launch_description() -> LaunchDescription:
     # not drive anything; executor_node owns the control loop and is the only
     # process that publishes motion commands during playback; finger_servo_node
     # owns the Dynamixel bus. Without the executor the Robot folder reports "no
-    # executor on /gepetto/play_plan" and refuses to play. The visualizer and the
+    # executor on /epfl_hand/play_plan" and refuses to play. The visualizer and the
     # loop are deliberately separate processes -- a heavy scene update used to
     # stall the loop past MoveIt Servo's command timeout and trip the tracking
-    # watchdog. See gepetto_control/executor_node.py.
+    # watchdog. See epfl_hand_control/executor_node.py.
     ld.add_action(
         Node(
-            package="gepetto_control",
+            package="epfl_hand_control",
             executable="viz_node",
-            name="gepetto_viz",
+            name="epfl_hand_viz",
             output="screen",
-            additional_env=gepetto_ros_env,
+            additional_env=epfl_hand_ros_env,
             condition=use_viz,
         )
     )
     ld.add_action(
         Node(
-            package="gepetto_control",
+            package="epfl_hand_control",
             executable="executor_node",
-            name="gepetto_executor",
+            name="epfl_hand_executor",
             output="screen",
-            additional_env=gepetto_ros_env,
+            additional_env=epfl_hand_ros_env,
             condition=use_viz,
         )
     )
     ld.add_action(
         Node(
-            package="gepetto_hardware",
+            package="epfl_hand_hardware",
             executable="finger_servo_node",
             name="finger_servo_node",
             output="screen",
-            additional_env=gepetto_ros_env,
+            additional_env=epfl_hand_ros_env,
             parameters=[
                 {
                     "moving_speed": ParameterValue(

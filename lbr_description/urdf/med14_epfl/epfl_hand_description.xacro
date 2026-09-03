@@ -5,9 +5,9 @@
 
     <!--
         The hand's measured mass and centre of mass, written by
-        gepetto_control/payload_id_node. Generated, unlike the mount offset below,
-        which is copied by hand. The macro retains its gepetto_ros API name so a
-        regenerated payload file remains compatible with this description.
+        epfl_hand_control/payload_id_node. Generated, unlike the mount offset below,
+        which is copied by hand. The generated macro name is part of the ROS stack's
+        interface and must remain compatible with this description.
     -->
     <xacro:include filename="$(find lbr_description)/urdf/med14_epfl/epfl_payload.xacro" />
 
@@ -52,7 +52,7 @@
             whatever payload_id_node last measured, and nothing before the first run.
         -->
         <link name="${robot_name}_epfl_wrist_link">
-            <xacro:gepetto_payload_inertial />
+            <xacro:epfl_payload_inertial />
             <visual>
                 <geometry>
                     <box size="${marker_size} ${marker_size} ${marker_size}" />
@@ -67,18 +67,6 @@
             <child link="${robot_name}_epfl_wrist_link" />
             <origin xyz="-0.009490 -0.010641 0.139688"
                     rpy="1.570796 0.174533 -1.570796" />
-        </joint>
-
-        <!--
-            Compatibility alias for the unchanged gepetto_ros API. Its nodes still
-            resolve <robot_name>_gepetto_wrist_link; new descriptions, planning
-            groups, and integrations should use <robot_name>_epfl_wrist_link.
-        -->
-        <link name="${robot_name}_gepetto_wrist_link" />
-        <joint name="${robot_name}_gepetto_wrist_compat_joint" type="fixed">
-            <parent link="${robot_name}_epfl_wrist_link" />
-            <child link="${robot_name}_gepetto_wrist_link" />
-            <origin xyz="0 0 0" rpy="0 0 0" />
         </joint>
 
     </xacro:macro>

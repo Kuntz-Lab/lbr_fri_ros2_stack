@@ -3,7 +3,7 @@
 
     <!--
         GENERATED FILE. Do not edit by hand. Written by
-        gepetto_control/payload_id_node on 2026-08-25T16:17:57 from 40 static
+        epfl_hand_control/payload_id_node on 2026-08-25T16:17:57 from 40 static
         torque samples over 40 poses (residual RMS 0.696 Nm,
         condition number 1.3). Re-run the node to regenerate.
 
@@ -13,7 +13,7 @@
         placeholder. Replace them with CAD values if a dynamic model ever
         needs them.
     -->
-    <xacro:macro name="gepetto_payload_inertial">
+    <xacro:macro name="epfl_payload_inertial">
         <inertial>
             <mass value="0.856730" />
             <origin xyz="0.034352 -0.118518 -0.019644"

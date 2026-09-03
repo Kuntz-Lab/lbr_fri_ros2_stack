@@ -67,7 +67,7 @@ This is the **Kuntz Lab fork** of [lbr-stack/lbr_fri_ros2_stack](https://github.
 | New MoveIt configs | [`med14_tc_moveit_config`](lbr_moveit_config/med14_tc_moveit_config/), [`med14_robotiq_2f_moveit_config`](lbr_moveit_config/med14_robotiq_2f_moveit_config/) (the latter with an `arm` and a `gripper` planning group), [`med14_epfl_moveit_config`](lbr_moveit_config/med14_epfl_moveit_config/). |
 | Combined control | [`lbr_description/ros2_control/combined_controllers.yaml`](lbr_description/ros2_control/combined_controllers.yaml) — LBR controllers plus `robotiq_gripper_controller` and `robotiq_activation_controller` under one controller manager. |
 | New launch files | [`lbr_move_to_pose.launch.py`](lbr_bringup/launch/lbr_move_to_pose.launch.py), [`lbr_and_robotiq_hardware.launch.py`](lbr_bringup/launch/lbr_and_robotiq_hardware.launch.py), [`lbr_servoing.launch.py`](lbr_bringup/launch/lbr_servoing.launch.py), [`lbr_servoing_and_robotiq.launch.py`](lbr_bringup/launch/lbr_servoing_and_robotiq.launch.py), [`lbr_epfl.launch.py`](lbr_bringup/launch/lbr_epfl.launch.py). |
-| EPFL hand integration | `med14_epfl` carries the `epfl_hand_core` mount transform as a real URDF frame, and `lbr_epfl.launch.py` brings the arm, RViz, and the [`gepetto_ros`](../gepetto_ros) hand nodes up together. See [EPFL hand bringup](#epfl-hand-bringup). |
+| EPFL hand integration | `med14_epfl` carries the `epfl_hand_core` mount transform as a real URDF frame, and `lbr_epfl.launch.py` brings the arm, RViz, and the [`epfl_hand_ros`](../epfl_hand_ros) hand nodes up together. See [EPFL hand bringup](#epfl-hand-bringup). |
 | Modified upstream files | `description.py` (passes `com_port` / `use_fake_hardware` to xacro, adds the new models to `model` choices), `moveit.py` + `move_group.launch.py` (`sensors_3d` / `sensors_3d_config` args and octomap params), `hardware.launch.py` and `mock.launch.py` (gripper-related args), `lbr_system_config.yaml` (FRI 2.6). |
 
 ## Package overview
@@ -296,17 +296,13 @@ ros2 action send_goal /move_to_home lbr_interfaces/action/MoveHome \
 
 ## EPFL hand bringup
 
-`med14_epfl` is the join between this stack and the [`gepetto_ros`](../gepetto_ros) /
+`med14_epfl` is the join between this stack and the [`epfl_hand_ros`](../epfl_hand_ros) /
 [`epfl_hand_core`](../epfl_hand_core) tendon-driven hand. Its primary wrist frame,
 `lbr_epfl_wrist_link`, is fixed to `lbr_link_ee` at the measured mount offset:
 
 ```xml
 <origin xyz="-0.009490 -0.010641 0.139688" rpy="1.570796 0.174533 -1.570796" />
 ```
-
-The description also publishes `lbr_gepetto_wrist_link` as a zero-offset compatibility
-alias because the unchanged `gepetto_ros` nodes still resolve that established frame.
-New LBR and MoveIt integrations should use `lbr_epfl_wrist_link`.
 
 Those numbers are `MountConfig.flange_from_wrist_xyz` / `_rpy` from
 [epfl_hand_core/src/epfl_hand_core/config.py](../epfl_hand_core/src/epfl_hand_core/config.py), copied
@@ -342,8 +338,8 @@ it with a dry-run hand:
 ```shell
 ros2 launch lbr_bringup lbr_epfl.launch.py epfl_nodes:=none
 # then, in other terminals
-ros2 run gepetto_hardware finger_servo_node --ros-args -p dry_run:=true
-ros2 run lbr_motion twist_servo_pub          # or: ros2 run gepetto_control home_node
+ros2 run epfl_hand_hardware finger_servo_node --ros-args -p dry_run:=true
+ros2 run lbr_motion twist_servo_pub          # or: ros2 run epfl_hand_control home_node
 ```
 
 | Argument | Default | Meaning |
@@ -358,7 +354,7 @@ ros2 run lbr_motion twist_servo_pub          # or: ros2 run gepetto_control home
 time.
 
 The conda environment is applied per-node via `additional_env` rather than a launch-wide
-`SetEnvironmentVariable` (which is what the launch files in `gepetto_launch` do). That keeps
+`SetEnvironmentVariable` (which is what the launch files in `epfl_hand_launch` do). That keeps
 conda's `site-packages` out of `move_group`, `servo_node`, `ros2_control_node`, and RViz, which
 must keep the system python they were built against.
 
