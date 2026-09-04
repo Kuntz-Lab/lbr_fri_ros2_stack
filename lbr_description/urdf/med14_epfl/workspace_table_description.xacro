@@ -47,12 +47,12 @@
             <xacro:box_inertia m="2.0" l="${table_length}" w="${table_width}" h="${table_thickness}"
                                xyz="${slab_origin_x} ${slab_origin_y} ${slab_origin_z}" rpy="0 0 0" />
 
-            <collision>
+            <!-- <collision>
                 <geometry>
                     <box size="${table_length} ${table_width} ${table_thickness}" />
                 </geometry>
                 <origin xyz="${slab_origin_x} ${slab_origin_y} ${slab_origin_z}" rpy="0 0 0" />
-            </collision>
+            </collision> -->
         </link>
 
         <joint name="${robot_name}_workspace_table_joint" type="fixed">

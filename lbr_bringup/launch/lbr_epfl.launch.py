@@ -10,28 +10,37 @@ Two modes of arm control, selected by `servo`:
                              rate control: Servo maps an incoming Cartesian twist to
                              joint velocities through the Jacobian pseudo-inverse and
                              publishes to /lbr/forward_position_controller/commands.
-                             This is how the cell is actually driven -- viz_node,
-                             home_node and lbr_motion's *_servo_pub all command Servo.
+                             This is how the cell is actually driven --
+                             gepetto_ros's executor_node and home_node, and
+                             lbr_motion's *_servo_pub, all command Servo.
     servo:=false             joint_trajectory_controller -- plain description bringup,
                              for eyeballing the mount transform in RViz. Needs no MoveIt.
 
 The MoveIt Servo include is condition-gated, so with servo:=false nothing in this
 launch imports MoveIt.
 
+THE VISER WORKBENCH IS NOT HERE. It used to be, as `epfl_nodes:=viz`, which also
+started the trajectory executor and the finger servo. Both the workbench and the
+executor are hand-agnostic and now live in `gepetto_ros`, which INCLUDES this
+launch with `epfl_nodes:=none` and adds them itself:
+
+    ros2 launch gepetto_ros_launch gepetto_bringup.launch.py hand:=epfl mode:=mock
+
+That is the entry point for solving in a browser and playing it on the robot. This
+stack stays what it is -- descriptions, ros2_control, MoveIt, servo and RViz -- and
+carries no dependency on a solver or a visualizer.
+
 Examples:
 
-    # the usual thing: resolved rate control + the interactive visualizer wired to
-    # the robot, at http://localhost:8080 -- solve in the browser, play it on the
-    # hardware. Opens the Dynamixel port; see epfl_nodes:=none if the hand is
-    # not plugged in.
-    ros2 launch lbr_bringup lbr_epfl.launch.py
-
-    # arm only, for driving Servo by hand or for pairing with a dry_run hand:
-    #   ros2 run epfl_hand_hardware finger_servo_node --ros-args -p dry_run:=true
-    #   ros2 run lbr_motion twist_servo_pub
+    # the usual thing from this stack: resolved rate control, RViz, and the arm
+    # ready to be driven by whatever commands Servo (gepetto_ros's executor,
+    # lbr_motion's twist_servo_pub, or your own node)
     ros2 launch lbr_bringup lbr_epfl.launch.py epfl_nodes:=none
 
-    # open-loop finger sliders instead of the visualizer
+    # ...paired with a hand you start yourself:
+    #   ros2 run epfl_hand_hardware finger_servo_node --ros-args -p dry_run:=true
+
+    # open-loop finger sliders, for bring-up with no planner in the loop
     ros2 launch lbr_bringup lbr_epfl.launch.py epfl_nodes:=sliders
 
     # description + RViz only, no MoveIt
@@ -99,16 +108,16 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(
         DeclareLaunchArgument(
             "epfl_nodes",
-            default_value="viz",
+            default_value="none",
             description="Which hand nodes to start. 'sliders' is the open-loop slider "
-            "GUI, 'full' is hand_node + state_estimator + planner, 'viz' is the "
-            "interactive viser visualizer in ROS mode + executor_node + "
-            "finger_servo_node (the combination that can play a solve on the "
-            "robot; the executor is the process that actually drives it). "
-            "These are mutually exclusive: "
+            "GUI, 'full' is hand_node + state_estimator + planner, 'none' starts "
+            "nothing and is the default -- pair it with a hand node you start "
+            "yourself, or use gepetto_ros_launch's gepetto_bringup.launch.py, "
+            "which includes this launch and adds the executor, the finger servo "
+            "and the viser workbench. These are mutually exclusive: "
             "finger_slider_node, hand_node and finger_servo_node all claim "
             "/dev/ttyUSB*.",
-            choices=["sliders", "full", "viz", "none"],
+            choices=["sliders", "full", "none"],
         )
     )
     epfl_nodes = LaunchConfiguration("epfl_nodes")
@@ -139,9 +148,13 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(
         DeclareLaunchArgument(
             "conda_prefix",
-            default_value=[EnvironmentVariable("HOME"), "/miniconda3/envs/crest_py10"],
-            description="Conda env the epfl_hand_ros nodes run against. It must provide "
-            "epfl_hand_core and crest_sparse.",
+            default_value=[EnvironmentVariable("HOME"), "/miniconda3/envs/gepetto_py10"],
+            description="Conda env the epfl_hand_ros nodes run against. It must "
+            "provide epfl_hand_core, which is what the hardware nodes import. "
+            "NOTE that epfl_nodes:=full ALSO starts state_estimator and planner, "
+            "which import crest_sparse and therefore want the deprecated "
+            "crest_py10 env instead -- those two have not been ported and that "
+            "combination is unverified. See epfl_hand_ros/README.md.",
         )
     )
     conda_prefix = LaunchConfiguration("conda_prefix")
@@ -229,7 +242,6 @@ def generate_launch_description() -> LaunchDescription:
         PythonExpression(["'", epfl_nodes, "' == 'sliders'"])
     )
     use_full = IfCondition(PythonExpression(["'", epfl_nodes, "' == 'full'"]))
-    use_viz = IfCondition(PythonExpression(["'", epfl_nodes, "' == 'viz'"]))
 
     ld.add_action(
         Node(
@@ -285,59 +297,6 @@ def generate_launch_description() -> LaunchDescription:
             output="screen",
             additional_env=epfl_hand_ros_env,
             condition=use_full,
-        )
-    )
-
-    # epfl_nodes:=viz -- the interactive visualizer, its executor, and the
-    # finger servo, wired to this robot. Pair it with servo:=true: playing a solve
-    # publishes Cartesian twists to MoveIt Servo, which only runs in that mode.
-    #
-    # THREE NODES, AND ALL THREE ARE REQUIRED. viz_node draws and solves but does
-    # not drive anything; executor_node owns the control loop and is the only
-    # process that publishes motion commands during playback; finger_servo_node
-    # owns the Dynamixel bus. Without the executor the Robot folder reports "no
-    # executor on /epfl_hand/play_plan" and refuses to play. The visualizer and the
-    # loop are deliberately separate processes -- a heavy scene update used to
-    # stall the loop past MoveIt Servo's command timeout and trip the tracking
-    # watchdog. See epfl_hand_control/executor_node.py.
-    ld.add_action(
-        Node(
-            package="epfl_hand_control",
-            executable="viz_node",
-            name="epfl_hand_viz",
-            output="screen",
-            additional_env=epfl_hand_ros_env,
-            condition=use_viz,
-        )
-    )
-    ld.add_action(
-        Node(
-            package="epfl_hand_control",
-            executable="executor_node",
-            name="epfl_hand_executor",
-            output="screen",
-            additional_env=epfl_hand_ros_env,
-            condition=use_viz,
-        )
-    )
-    ld.add_action(
-        Node(
-            package="epfl_hand_hardware",
-            executable="finger_servo_node",
-            name="finger_servo_node",
-            output="screen",
-            additional_env=epfl_hand_ros_env,
-            parameters=[
-                {
-                    "moving_speed": ParameterValue(
-                        LaunchConfiguration("moving_speed"), value_type=int
-                    ),
-                    "torque_limit": ParameterValue(
-                        LaunchConfiguration("torque_limit"), value_type=int
-                    ),
-                }
-            ],
-            condition=use_viz,
         )
     )
 

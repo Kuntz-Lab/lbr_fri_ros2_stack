@@ -198,7 +198,7 @@ All launch files live in [lbr_bringup/launch](lbr_bringup/launch/). Fork additio
 | ★`lbr_and_robotiq_hardware.launch.py` | `hardware.launch.py` + Robotiq gripper/activation controller spawners | `model` (`med14_robotiq_2f`), `robot_name` (`lbr`), `com_port` (`/dev/ttyUSB1`) |
 | ★`lbr_servoing.launch.py` | Mock robot on `forward_position_controller` + MoveIt Servo + RViz | `model` (`med14_robotiq_2f`), `mode` (`mock`), `rviz` (`true`) |
 | ★`lbr_servoing_and_robotiq.launch.py` | Same as above but also spawns the Robotiq controllers in mock mode | `model` (`med14_robotiq_2f`), `mode` (`mock`), `rviz` (`true`) |
-| ★`lbr_epfl.launch.py` | Mock robot on `forward_position_controller` + MoveIt Servo + RViz + the EPFL hand nodes | `model` (`med14_epfl`), `mode` (`mock`), `servo` (`true`), `rviz` (`true`), `epfl_nodes` (`viz`), `moving_speed` (`0`), `torque_limit` (`0`), `command_hz` (`20.0`), `conda_prefix` (`~/miniconda3/envs/crest_py10`) |
+| ★`lbr_epfl.launch.py` | Mock robot on `forward_position_controller` + MoveIt Servo + RViz, with optional EPFL hand nodes | `model` (`med14_epfl`), `mode` (`mock`), `servo` (`true`), `rviz` (`true`), `epfl_nodes` (`none`), `moving_speed` (`0`), `torque_limit` (`0`), `command_hz` (`20.0`), `conda_prefix` (`~/miniconda3/envs/gepetto_py10`) |
 
 Notes on the fork launch files:
 
@@ -332,21 +332,30 @@ driven:
 ros2 launch lbr_bringup lbr_epfl.launch.py
 ```
 
-That opens the Dynamixel port. Without the hand plugged in, bring the arm up alone and pair
-it with a dry-run hand:
+That brings the ARM half up and starts no hand node (`epfl_nodes` defaults to `none`).
+Pair it with a hand of your own:
 
 ```shell
-ros2 launch lbr_bringup lbr_epfl.launch.py epfl_nodes:=none
-# then, in other terminals
 ros2 run epfl_hand_hardware finger_servo_node --ros-args -p dry_run:=true
-ros2 run lbr_motion twist_servo_pub          # or: ros2 run epfl_hand_control home_node
+ros2 run lbr_motion twist_servo_pub    # or: ros2 run gepetto_ros home_node -p hand:=epfl
 ```
+
+To solve in a browser and play the result on the robot, do not use this launch directly --
+use the one that includes it and adds the planner side:
+
+```shell
+ros2 launch gepetto_ros_launch gepetto_bringup.launch.py hand:=epfl mode:=mock
+```
+
+The viser workbench and the trajectory executor are hand-agnostic and live in `gepetto_ros`,
+not here; this stack is the descriptions, `ros2_control`, MoveIt, Servo and RViz, and carries
+no dependency on a solver or a visualizer.
 
 | Argument | Default | Meaning |
 | :--- | :--- | :--- |
-| `servo` | `true` | `forward_position_controller` + MoveIt Servo, which is what `viz_node`, `home_node` and `lbr_motion`'s `*_servo_pub` all command. `servo:=false` falls back to `joint_trajectory_controller`; the MoveIt include is condition-gated, so that mode does not need MoveIt installed. |
-| `epfl_nodes` | `viz` | `viz` = `viz_node` + `executor_node` + `finger_servo_node`; `sliders` = `finger_slider_node` only; `full` = `hand_node` + `state_estimator` + `planner`; `none` = arm only. |
-| `conda_prefix` | `~/miniconda3/envs/crest_py10` | Env supplying `epfl_hand_core` and `crest_sparse` to the hand nodes. |
+| `servo` | `true` | `forward_position_controller` + MoveIt Servo, which is what `gepetto_ros`'s `executor_node` and `home_node` and `lbr_motion`'s `*_servo_pub` all command. `servo:=false` falls back to `joint_trajectory_controller`; the MoveIt include is condition-gated, so that mode does not need MoveIt installed. |
+| `epfl_nodes` | `none` | `none` = arm only (the default); `sliders` = `finger_slider_node` only; `full` = `hand_node` + `state_estimator` + `planner`. The old `viz` choice is gone — see `gepetto_ros_launch/gepetto_bringup.launch.py`. |
+| `conda_prefix` | `~/miniconda3/envs/gepetto_py10` | Env supplying `epfl_hand_core` to the hand nodes. `epfl_nodes:=full` additionally needs `crest_sparse`, which lives only in the deprecated `crest_py10`; that combination is unverified. |
 | `moving_speed`, `torque_limit`, `command_hz` | `0`, `0`, `20.0` | Passed to the hand nodes; `0` keeps the `HandConfig` default. |
 
 `epfl_nodes` is one enum rather than separate switches on purpose: `finger_servo_node`,
